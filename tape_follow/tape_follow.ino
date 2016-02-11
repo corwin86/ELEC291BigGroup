@@ -23,7 +23,11 @@ int left, right,
 // == END VARIABLES ==
 
 void setup() {
+  // initialize serial monitor
+  Serial.begin(9600);
   
+  // setup pin modes
+  // !!! TBD
 }
 
 void loop() {
@@ -54,6 +58,7 @@ void loop() {
   rightspeed = vel - con;
   leftspeed  = vel + con;
   
+  Serial.print("Sensors: "); Serial.print(left); Serial.print(" | "); Serial.print(right); Serial.print("\tMotor: "); Serial.print(leftspeed); Serial.print(" | "); Serial.print(rightspeed);
   //motor.speed(RIGHT_MOTOR, rightspeed < 255 ? rightspeed > 0 ? rightspeed : 0 : 255);
   //motor.speed(LEFT_MOTOR, leftspeed  < 255 ? leftspeed  > 0 ? leftspeed  : 0 : 255);
   
