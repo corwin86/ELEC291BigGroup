@@ -1,6 +1,9 @@
 
 // ==== PINOUTS ====
+// Analog
 const int TAPE_LEFT = 0, TAPE_RIGHT = 0;
+// Digital
+// !!! TBD
 // == END PINOUTS ==
 
 // ==== VARIABLES ====
@@ -20,8 +23,7 @@ int left, right,
 // == END VARIABLES ==
 
 void setup() {
-  // put your setup code here, to run once:
-
+  
 }
 
 void loop() {
@@ -52,8 +54,8 @@ void loop() {
   rightspeed = vel - con;
   leftspeed  = vel + con;
   
-  motor.speed(RIGHT_MOTOR, rightspeed < 255 ? rightspeed > 0 ? rightspeed : 0 : 255);
-  motor.speed(LEFT_MOTOR, leftspeed  < 255 ? leftspeed  > 0 ? leftspeed  : 0 : 255);
+  //motor.speed(RIGHT_MOTOR, rightspeed < 255 ? rightspeed > 0 ? rightspeed : 0 : 255);
+  //motor.speed(LEFT_MOTOR, leftspeed  < 255 ? leftspeed  > 0 ? leftspeed  : 0 : 255);
   
   lerr = error;
   // end tape following
