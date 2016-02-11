@@ -1,7 +1,7 @@
 
 // ==== PINOUTS ====
 // Analog
-const int TAPE_LEFT = 0, TAPE_RIGHT = 0;
+const int TAPE_LEFT = 0, TAPE_RIGHT = 1;
 // Digital
 // !!! TBD
 // == END PINOUTS ==
@@ -58,7 +58,8 @@ void loop() {
   rightspeed = vel - con;
   leftspeed  = vel + con;
   
-  Serial.print("Sensors: "); Serial.print(left); Serial.print(" | "); Serial.print(right); Serial.print("\tMotor: "); Serial.print(leftspeed); Serial.print(" | "); Serial.print(rightspeed);
+  Serial.print("Sensors: "); Serial.print(left); Serial.print(" | "); Serial.print(right); Serial.print("\tMotor: "); Serial.print(leftspeed); Serial.print(" | "); Serial.println(rightspeed);
+  delay(150);
   //motor.speed(RIGHT_MOTOR, rightspeed < 255 ? rightspeed > 0 ? rightspeed : 0 : 255);
   //motor.speed(LEFT_MOTOR, leftspeed  < 255 ? leftspeed  > 0 ? leftspeed  : 0 : 255);
   
