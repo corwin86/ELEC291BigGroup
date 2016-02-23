@@ -11,7 +11,7 @@
 #define SLOW_DIST 30  //cm
 #define STOP_DIST 10  //cm
 #define STOP 0
-//#define MAX_SPEED     //TBD by motor people
+//#define MAX_SPEED 255    //TBD by motor people
 //#define SLOW_INC      //TBD by motor people
 #define LEFT -90
 #define RIGHT 90
