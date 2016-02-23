@@ -4,32 +4,14 @@
 #define ECHO
 #define TEMPERATURE
 
-// ==== PINOUTS ====
-// Analog
-const int TAPE_LEFT = 0, TAPE_RIGHT = 0;
-// Digital
-// !!! TBD
-// == END PINOUTS ==
-
 // ==== VARIABLES ====
 
 /**** SENSOR CONTROL ****/
 int rangePos = 0;    // variable to store the servo position for range finder
+
 Servo myservo;  // create servo object to control a servo
 /** END SENSOR CONTROL **/
 
-/**** PID GAINS ****/
-int kp = 20,
-    kd = 20,
-    vel = 60;
-/** END PID GAINS **/
-
-int left, right,
-    leftspeed, rightspeed,
-    m = 1, q = 0, // PID control variables, D gain counters
-    p, d, con, //P correction, D correction, total correction
-    error, lerr = 0, recerr = 0, // track current, last, and most recent (if not same as last)
-    tape_thresh = 250;
 // == END VARIABLES ==
 
 void setup() {
@@ -38,8 +20,7 @@ void setup() {
   // attaches the servo on pin 9 to the servo object
   myservo.attach(9);
 
-  
-  // setup pin modes
+  // rangefinder pin modes
   pinMode(TRIGGER, OUTPUT);
   pinMode(ECHO, INPUT);
   pinMode(TEMPERATURE, INPUT);
@@ -47,39 +28,9 @@ void setup() {
 }
 
 void loop() {
-  //tape follow
-  left  = analogRead(TAPE_LEFT);
-  right = analogRead(TAPE_RIGHT);
-  
-  if     (left > tape_thresh && right > tape_thresh) { error =  0; } // oo
-  else if(left > tape_thresh && right < tape_thresh) { error = -1; } // ox
-  else if(left < tape_thresh && right > tape_thresh) { error =  1; } // xo
-  else if(left < tape_thresh && right < tape_thresh) {               // xx
-    if(lerr > 0){ error =  5; }
-    if(lerr < 0){ error = -5; }
-  }
-  
-  if(error != lerr) {
-    recerr = lerr;
-    q = m;
-    m = 1;
-  }
-  
-  p = kp * error;
-  d = (int)((float)kd * (float)(error - recerr)/(float)(q + m));
-  con = p + d;
-  
-  m = m + 1;
-  
-  rightspeed = vel - con;
-  leftspeed  = vel + con;
-  
-  Serial.print("Sensors: "); Serial.print(left); Serial.print(" | "); Serial.print(right); Serial.print("\tMotor: "); Serial.print(leftspeed); Serial.print(" | "); Serial.print(rightspeed);
-  //motor.speed(RIGHT_MOTOR, rightspeed < 255 ? rightspeed > 0 ? rightspeed : 0 : 255);
-  //motor.speed(LEFT_MOTOR, leftspeed  < 255 ? leftspeed  > 0 ? leftspeed  : 0 : 255);
-  
-  lerr = error;
-  // end tape following
+
+  if (ping() < 30) 
+    printf(sweep();
 }
 
 /**
@@ -102,7 +53,7 @@ void moveSensor(int pos) {
 }
 
 /**
- * Sweeps the rangefinder from 90 degrees, to 0, to 180, then back to 90,
+ * Sweeps the rangefinder from 90 degrees to 0, to 180, then back to 90,
  * pinging the rangefinder at 0 and 180 degrees.
  * 
  * Returns: 1 if the longest distance read is on the left, 0 if the longest distance is on the right
@@ -110,10 +61,11 @@ void moveSensor(int pos) {
 int sweep() {
   moveSensor(0);
   float leftDist = ping();
+  
   moveSensor(180);
   float rightDist = ping();
   moveSensor(90);
-  if (leftDist > ping())
+  if (leftDist > rightDist)
     return 1;
   else
     return 0;
@@ -152,8 +104,10 @@ float ping(){
   
   delayMicroseconds(100);
 
+  //possibly comment this out
   if (distance > 3000)
     return ping();
+    
   else
     return distance;
 }
