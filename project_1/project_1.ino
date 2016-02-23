@@ -5,6 +5,8 @@
 #define TRIGGER 13
 #define ECHO 11
 #define TEMPERATURE 3
+#define SWITCH1 
+#define SWITCH2 
 
 #define SLOW_DIST 30  //cm
 #define STOP_DIST 10  //cm
@@ -21,6 +23,7 @@ float temp;
 float pulse;
 float distance;
 float SpeedOfSound;
+int function = 0;
 // == END VARIABLES ==
 
 void setup() {
@@ -39,13 +42,21 @@ void setup() {
 }
 
 void loop() {
-  f1_loop();
+  if (function == 1)
+    f1_loop();
+  else if (function == 2)
+    f2_loop();
+  else if (function == 3)
+    f3_loop();
+  else
+    continue;
 }
 
 /**
- * Loop for function 1: roomba
+ * Loop for function 1
  */
 void f1_loop(){
+  while(function == 1){
     int dist = ping();
     
     if (dist > SLOW_DIST) 
@@ -66,6 +77,35 @@ void f1_loop(){
       else
         turn(RIGHT);
     }
+  }
+}
+
+void f2_loop(){
+  while(function == 2){
+      
+  }
+}
+
+void f3_loop(){
+  while(function == 3){
+      
+  }
+}
+
+int functionStatus(){
+  boolean s1 = digitalRead(SWITCH1); 
+  boolean s2 = digitalRead(SWITCH2);
+  
+  if (s1 & !s2)
+    function = 1;
+  else if (!s1 & s2)
+    function = 2;
+  else if (s1 & s2)
+    function = 3;
+  else
+    function = 0;
+    
+  return function;
 }
 
 /**
