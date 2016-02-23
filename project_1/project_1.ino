@@ -8,11 +8,11 @@
 #define SWITCH1 
 #define SWITCH2 
 
-#define SLOW_DIST 30  //cm
-#define STOP_DIST 10  //cm
+#define SLOW_DIST 40  //cm away to start slowing down
+#define STOP_DIST 15  //cm away to stop
 #define STOP 0
-//#define MAX_SPEED 255    //TBD by motor people
-//#define SLOW_INC      //TBD by motor people
+#define MAX_SPEED 255
+#define SLOW_INC 50   //amount to decrement speed by when slowing down
 #define LEFT -90
 #define RIGHT 90
 
@@ -41,7 +41,11 @@ void setup() {
 
 }
 
+//determines which function loop to run
 void loop() {
+  //updates the current function status, loops until valid function
+  functionStatus();
+  
   if (function == 1)
     f1_loop();
   else if (function == 2)
@@ -53,10 +57,13 @@ void loop() {
 }
 
 /**
- * Loop for function 1
+ * Loop for roomba function
+ * Robot moves at max speed until it gets close to a wall/surface
+ * It then sweeps the area around it (180 degrees), checks if there is more room
+ * to the left or to the right, and then moves at max speed in that direction
  */
 void f1_loop(){
-  while(function == 1){
+  while(functionStatus() == 1){
     int dist = ping();
     
     if (dist > SLOW_DIST) 
@@ -77,21 +84,35 @@ void f1_loop(){
       else
         turn(RIGHT);
     }
+    
   }
 }
 
+/**
+ * Loop for tape following function
+ * (follows a black line of tape)
+ */
 void f2_loop(){
-  while(function == 2){
+  while(functionStatus() == 2){
       
   }
 }
 
+/**
+ * Loop for our third function
+ * IT'S A MYSTERY...
+ */
 void f3_loop(){
-  while(function == 3){
-      
+  while(functionStatus() == 3){
+    
   }
 }
 
+/**
+ * Does two things:
+ * 1. updates the function variable to reflect current function status
+ * 2. returns the function variable so the function can be called and used in one line
+ */
 int functionStatus(){
   boolean s1 = digitalRead(SWITCH1); 
   boolean s2 = digitalRead(SWITCH2);
@@ -168,11 +189,6 @@ float ping(){
   
   delayMicroseconds(100);
 
-  //possibly comment this out
-  if (distance > 3000)
-    return ping();
-    
-  else
-    return distance;
+  return distance;
 }
 
