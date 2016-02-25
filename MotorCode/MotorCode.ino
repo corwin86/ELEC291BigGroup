@@ -5,6 +5,9 @@
 #define SPEED_A 4
 #define SPEED_B 7
 
+#define LEFT 1
+#define RIGHT 0
+
 void setup() {
   //set up channels A & B with respecetive pins
   pinMode(MOTOR_A, OUTPUT);  //Motor A pin
@@ -86,4 +89,10 @@ void stop(){
   digitalWrite(MOTOR_A, LOW);
   digitalWrite(MOTOR_B, LOW); 
 }
+ 
+void goForward(int speed){}
+void decelerate(){}
+void turn(int direction, int degree){}
+
+   
 
