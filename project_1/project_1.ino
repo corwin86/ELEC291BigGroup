@@ -1,8 +1,8 @@
 #include <Servo.h>
 
 //control pins !!!!!!add motor here!!!!!!------------------------------------------------------------------
-#define SWITCH1 
-#define SWITCH2 
+#define SWITCH1 2   //check which pin this uses
+#define SWITCH2 3   //check which pin this uses
 
 //f1 pins
 #define SERVO 10
@@ -21,9 +21,9 @@
 #define STOP_DIST 15  //cm away to stop
 #define STOP 0
 #define MAX_SPEED 255
-#define SLOW_INC 50   //amount to decrement speed by when slowing down
-#define LEFT -90
-#define RIGHT 90
+#define SLOW_DEC 50   //amount to decrement speed by when slowing down
+#define LEFT 1
+#define RIGHT 0
 
 //f2 defines
 
@@ -37,7 +37,8 @@ int function = 0;
 
 /***collision (f1) variables***/
 Servo myservo;  // create servo object to control a servo
-float temp, pulse, distance, SpeedOfSound;
+float temp, pulse, distance, SpeedOfSound, 
+      rightDist, leftDist, sensorDist;
 /***end servo variables***/
 
 /***tapefollow (f2) variables***/
@@ -85,8 +86,6 @@ void loop() {
     f2_loop();
   else if (function == 3)
     f3_loop();
-  else
-    continue;
 }
 
 /**
@@ -97,27 +96,20 @@ void loop() {
  */
 void f1_loop(){
   while(functionStatus() == 1){
-    int dist = ping();
+    sensorDist = ping();
     
     if (dist > SLOW_DIST) 
-      moveForward(MAX_SPEED);
-      
-    else if (dist > STOP_DIST){
-      int myspeed = MAX_SPEED;
-      while (ping() > STOP_DIST){
-        moveForward(myspeed);
-        myspeed -= SLOW_INC;
-        delay(10);
-      }
-    }
+      goForward(MAX_SPEED);
     else {
-      moveForward(STOP);
-      if (sweep() == LEFT)
-        turn(LEFT);
-      else
-        turn(RIGHT);
+      decelerate(MAX_SPEED);
+      delay(10);
     }
     
+    if (sweep() == LEFT){
+      turn(LEFT, 90);
+    else
+      turn(RIGHT, 90);
+    }
   }
 }
 
@@ -180,8 +172,8 @@ void f3_loop(){
  * 2. returns the function variable so the function can be called and used in one line
  */
 int functionStatus(){
-  boolean s1 = digitalRead(SWITCH1); 
-  boolean s2 = digitalRead(SWITCH2);
+  int s1 = digitalRead(SWITCH1); 
+  int s2 = digitalRead(SWITCH2);
   
   if (s1 & !s2)
     function = 1;
@@ -203,12 +195,12 @@ int functionStatus(){
  */
 int sweep() {
   myservo.write(0);
-  delay(1500);
-  float leftDist = ping();
+  delay(1000);
+  leftDist = ping();
   
   myservo.write(180);
-  delay(1500);
-  float rightDist = ping();
+  delay(1000);
+  rightDist = ping();
 
   Serial.print("\nDistance to the left: ");
   Serial.print(leftDist);
@@ -252,9 +244,22 @@ float ping(){
 
   //Calculate the distance
   distance = pulse/(2*conversion);
-  
-  delayMicroseconds(100);
 
   return distance;
+}
+
+//robot moves forward at certain speed
+void goForward(int speed){
+  //skeleton function so code will compile
+}
+
+//robot pivots degrees specified in direction specified (RIGHT or LEFT)
+void turn(int direction, int degrees){
+  //skeleton function so code will compile
+}
+
+//decelerates to 0 from the speed specified
+void decelerate(int speed){
+  //skeleton function so code will compile
 }
 
