@@ -89,9 +89,25 @@ void stop(){
   digitalWrite(MOTOR_A, LOW);
   digitalWrite(MOTOR_B, LOW); 
 }
- 
-void goForward(int speed){}
-void decelerate(){}
+
+/*go forward at a given speed*/
+void goForward(int speed){
+  digitalWrite(MOTOR_A, HIGH);
+  analogWrite(SPEED_A, speed);
+  digitalWrite(MOTOR_B, HIGH);
+  analogWrite(SPEED_B, speed);
+  }
+
+/*Decelarate from cuurent speed to 0 in 2 seconds*/
+void decelerate(int speed){
+  int steps = speed / 10; 
+  for(int i = 0; i < 10; i++){
+    digitialWrite(MOTOR_A, speed - steps * i);
+    delay(200);
+  }
+  digitalWrite(MOTOR_A, 0);
+}
+
 void turn(int direction, int degree){}
 
    
