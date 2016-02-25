@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #define MOTOR_A 5
 #define MOTOR_B 6
 #define BRAKE_A 
@@ -14,10 +15,20 @@ void setup() {
 
   pinMode(MOTOR_B, OUTPUT);  //Motor B pin
   //pinMode(BRAKE_B, OUTPUT);   //Brake B pin
+=======
+void setup() {
+  //set up channels A & B with respecetive pins
+  pinMode(12, OUTPUT);  //Motor A pin
+  pinMode(9, OUTPUT);   //Brake A pin
+
+  pinMode(13, OUTPUT);  //Motor B pin
+  pinMode(8, OUTPUT);   //Brake B pin
+>>>>>>> 0bf2fe1e06be0880c3c1dc77b819b743fb5da3e1
 
 }
 
 void loop() {
+<<<<<<< HEAD
   digitalWrite(MOTOR_A, HIGH);
   //digitalWrite(BRAKE_A, LOW);
   analogWrite(SPEED_A, 255);
@@ -36,3 +47,8 @@ void loop() {
 }
 
 
+=======
+  // 
+
+}
+>>>>>>> 0bf2fe1e06be0880c3c1dc77b819b743fb5da3e1
