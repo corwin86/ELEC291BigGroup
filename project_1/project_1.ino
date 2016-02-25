@@ -1,13 +1,22 @@
 #include <Servo.h>
 
-//define pins
+//control pins !!!!!!add motor here!!!!!!------------------------------------------------------------------
+#define SWITCH1 
+#define SWITCH2 
+
+//f1 pins
 #define SERVO 10
 #define TRIGGER 13
 #define ECHO 11
 #define TEMPERATURE 3
-#define SWITCH1 
-#define SWITCH2 
 
+//f2 pins
+#define TAPE_LEFT 0
+#define TAPE_RIGHT 1
+
+//f3 pins
+
+//f1 defines
 #define SLOW_DIST 40  //cm away to start slowing down
 #define STOP_DIST 15  //cm away to stop
 #define STOP 0
@@ -16,14 +25,38 @@
 #define LEFT -90
 #define RIGHT 90
 
-// ==== VARIABLES ====
-Servo myservo;  // create servo object to control a servo
+//f2 defines
 
-float temp;
-float pulse;
-float distance;
-float SpeedOfSound;
+//f3 defines
+
+// ==== VARIABLES ====
+
+/***control variables***/
 int function = 0;
+/***end control variables***/
+
+/***collision (f1) variables***/
+Servo myservo;  // create servo object to control a servo
+float temp, pulse, distance, SpeedOfSound;
+/***end servo variables***/
+
+/***tapefollow (f2) variables***/
+int left, right,
+    leftspeed, rightspeed,
+    m = 1, q = 0, // PID control variables, D gain counters
+    p, d, con, //P correction, D correction, total correction
+    error, lerr = 0, recerr = 0, // track current, last, and most recent (if not same as last)
+    tape_thresh = 250;
+    
+//PID gains
+int kp = 20,
+    kd = 20,
+    vel = 60;
+/***end tapefollow variables***/
+
+/***roomba (f3) variables***/
+/***end roomba variables***/
+
 // == END VARIABLES ==
 
 void setup() {
@@ -57,7 +90,7 @@ void loop() {
 }
 
 /**
- * Loop for roomba function
+ * Loop for collision function
  * Robot moves at max speed until it gets close to a wall/surface
  * It then sweeps the area around it (180 degrees), checks if there is more room
  * to the left or to the right, and then moves at max speed in that direction
@@ -94,7 +127,40 @@ void f1_loop(){
  */
 void f2_loop(){
   while(functionStatus() == 2){
-      
+    //tape follow
+    left  = analogRead(TAPE_LEFT);
+    right = analogRead(TAPE_RIGHT);
+  
+    if     (left > tape_thresh && right > tape_thresh) { error =  0; } // oo
+    else if(left > tape_thresh && right < tape_thresh) { error = -1; } // ox
+    else if(left < tape_thresh && right > tape_thresh) { error =  1; } // xo
+    else if(left < tape_thresh && right < tape_thresh) {               // xx
+      if(lerr > 0){ error =  5; }
+      if(lerr < 0){ error = -5; }
+    }
+  
+    if(error != lerr) {
+      recerr = lerr;
+      q = m;
+      m = 1;
+    }
+  
+    p = kp * error;
+    d = (int)((float)kd * (float)(error - recerr)/(float)(q + m));
+    con = p + d;
+  
+    m = m + 1;
+  
+    rightspeed = vel - con;
+    leftspeed  = vel + con;
+  
+    Serial.print("Sensors: "); Serial.print(left); Serial.print(" | "); Serial.print(right); Serial.print("\tMotor: "); Serial.print(leftspeed); Serial.print(" | "); Serial.println(rightspeed);
+    delay(150);
+    //motor.speed(RIGHT_MOTOR, rightspeed < 255 ? rightspeed > 0 ? rightspeed : 0 : 255);
+    //motor.speed(LEFT_MOTOR, leftspeed  < 255 ? leftspeed  > 0 ? leftspeed  : 0 : 255);
+  
+    lerr = error;
+    // end tape following
   }
 }
 
