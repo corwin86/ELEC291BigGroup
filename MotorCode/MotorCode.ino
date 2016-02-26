@@ -1,9 +1,9 @@
-#define MOTOR_A 5 #right
-#define MOTOR_B 6 #left
+#define MOTOR_A 4 #right
+#define MOTOR_B 7 #left
 #define BRAKE_A 
 #define BRAKE_B 
-#define SPEED_A 4 #right
-#define SPEED_B 7 #left
+#define SPEED_A 5 #right
+#define SPEED_B 6 #left
 
 #define LEFT 1
 #define RIGHT 0
