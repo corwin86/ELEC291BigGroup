@@ -1,19 +1,24 @@
-#define MOTOR_A 5
-#define MOTOR_B 6
+#define MOTOR_A 5 #right
+#define MOTOR_B 6 #left
 #define BRAKE_A 
 #define BRAKE_B 
-#define SPEED_A 4
-#define SPEED_B 7
+#define SPEED_A 4 #right
+#define SPEED_B 7 #left
 
 #define LEFT 1
 #define RIGHT 0
 
-#define 
+#define HALL_EFFECT_LEFT 8
+#define HALL_EFFECT_RIGHT 9
+#define HALL_LOW 300
+#define HALL_HIGH 600
 
 void setup() {
   //set up channels A & B with respecetive pins
   pinMode(MOTOR_A, OUTPUT);  //Motor A pin
   pinMode(MOTOR_B, OUTPUT);  //Motor B pin
+  pinMode(HALL_EFFECT_LEFT, INPUT);
+  pinMode(HALL_EFFECT_RIGHT, INPUT);
 
 }
 
@@ -84,6 +89,38 @@ void decelerate(int speed){
 }
 
 void turn(int direction, int degree){}
+
+void calibrate(int speed_left, int speed_right){
+  //find time difference for sensor1
+  analogWrite(MOTOR_A, speed_right);
+  analogWrite(MOTOR_B, speed_left);
+  int sensor1 = analogRead(HALL_EFFECT_LEFT);
+  int sensor2 = analogRead(HALL_EFFECT_RIGHT);
+
+  int countLeft = 0;
+  int countRight = 0;
+  while(sensor1 < HALL_HIGH){
+    analogRead(HALL_EFFECT_LEFT);
+    countLeft++;
+  }
+
+  while(sensor2 < HALL_HIGH){
+    analogRead(HALL_EFFECT_RIGHT);
+    countRight++;
+  }
+
+  
+  if(countLeft < countRight){
+    while(countLeft < countRight){
+      analogWrite(MOTOR_B, --speed_left);
+    }
+  }
+  else{
+    while(countRight < countLeft){
+      analogWrite(MOTOR_A, --speed_right);
+    }
+  }
+}
 
    
 
