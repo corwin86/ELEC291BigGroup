@@ -7,6 +7,8 @@
 #define MOTOR_B 7 //left forward or backward
 #define SPEED_A 5 //right speed
 #define SPEED_B 6 // left speed
+#define LEFT 1
+#define CRASH_SWITCH 0 //must be changed!!!!
 
 void setup() {
   //set up channels A & B with respecetive pins
@@ -19,7 +21,7 @@ void loop() {
 
   delay(1000);
   
-  slowTurn(50);
+  spiral(LEFT);
   //spiral(0, 20);
 
   delay(2000);
@@ -57,6 +59,38 @@ void slowTurn(int degree){
     
 }
 
+/**
+ * Makes robot move in a spiral until it hits something
+ */
+void spiral(int direction){
+  stop();
+  int highSpeed = 150;
+  int lowSpeed = 0;
+  
+  if(direction == LEFT){
+    analogWrite(SPEED_B, highSpeed);
+    digitalWrite(MOTOR_B, HIGH);
+    while (digitalRead(CRASH_SWITCH) == LOW){
+      analogWrite(SPEED_A, lowSpeed); 
+      digitalWrite(MOTOR_A, HIGH);
+      delay(500);
+      lowSpeed+=15;
+    }
+  }
+  
+  else{
+    analogWrite(SPEED_A, highSpeed);
+    digitalWrite(MOTOR_A, HIGH);
+    while (digitalRead(CRASH_SWITCH) == LOW){
+      analogWrite(SPEED_B, lowSpeed); 
+      digitalWrite(MOTOR_B, HIGH);
+      delay(500);
+      lowSpeed+=15;
+    }
+  }
+  stop();
+}
+  
 /*
  * stops and returns to default forward direction
  */
@@ -65,30 +99,6 @@ void stop(){
    digitalWrite(MOTOR_A, HIGH);
    analogWrite(SPEED_B, 0); 
    digitalWrite(MOTOR_B, HIGH);
-}
-
-/*
- * THIS IS NOT GOOD
- */
-void spiral(int leftright, int numfeet){
-    int timeToTurn = numfeet * 1000;
-
-    if(leftright = 0){
-      analogWrite(SPEED_A, 150);
-      digitalWrite(MOTOR_A, HIGH);
-      analogWrite(SPEED_B, 100); 
-      digitalWrite(MOTOR_B, HIGH);
-    }
-    else{
-      analogWrite(SPEED_A, 100);
-      digitalWrite(MOTOR_A, HIGH);
-      analogWrite(SPEED_B, 150); 
-      digitalWrite(MOTOR_B, HIGH);
-    }
-    
-    delay(timeToTurn);
-    stop();
-    
 }
 
 
