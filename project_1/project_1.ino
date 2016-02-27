@@ -1,8 +1,8 @@
 #include <Servo.h>
 
 //control pins !!!!!!add motor here!!!!!!------------------------------------------------------------------
-#define SWITCH1 2   //check which pin this uses
-#define SWITCH2 3   //check which pin this uses
+#define SWITCH1 9   //check which pin this uses
+#define SWITCH2 8   //check which pin this uses
 
 //f1 pins
 #define SERVO 10
@@ -15,6 +15,7 @@
 #define TAPE_RIGHT 1
 
 //f3 pins
+#define CRASH_SWITCH 11 //check which pin this uses
 
 //f1 defines
 #define SLOW_DIST 40  //cm away to start slowing down
@@ -33,6 +34,7 @@
 
 /***control variables***/
 int function = 0;
+boolean stuck = 0;
 /***end control variables***/
 
 /***collision (f1) variables***/
@@ -66,7 +68,8 @@ void setup() {
   // attaches the servo on pin 10 to the servo object
   myservo.attach(SERVO);
   myservo.write(90);
-    
+
+  pinMode(CRASH_SWITCH, INPUT);
 
   // rangefinder pin modes
   pinMode(TRIGGER, OUTPUT);
@@ -186,6 +189,38 @@ int functionStatus(){
     
   return function;
 }
+
+/**
+ * 
+ */
+void circle(int direction, int radius){
+    int highSpeed = ;
+    int lowSpeed = 
+    int timeToTurn = (int) (2.0 * 3.1415 * radius / highSpeed);
+
+    if(direction == LEFT){
+      analogWrite(SPEED_A, highSpeed);
+      digitalWrite(MOTOR_A, HIGH);
+      analogWrite(SPEED_B, lowSpeed); 
+      digitalWrite(MOTOR_B, HIGH);
+    }
+    else{
+      analogWrite(SPEED_A, lowSpeed);
+      digitalWrite(MOTOR_A, HIGH);
+      analogWrite(SPEED_B, highSpeed); 
+      digitalWrite(MOTOR_B, HIGH);
+    }
+
+    while (timeToTurn > 0 && digitalRead(CRASH_SWITCH) == LOW){
+      delay(10);
+      timeToTurn--;
+    }
+    
+    stop();
+    
+}
+
+void spiral(int direction, int size){}
 
 /**
  * Sweeps the rangefinder from 90 degrees to 0, to 180, then back to 90,
