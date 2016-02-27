@@ -1,29 +1,65 @@
 #include <Servo.h>
 
-//define pins
+//control pins !!!!!!add motor here!!!!!!------------------------------------------------------------------
+#define SWITCH1 9   //check which pin this uses
+#define SWITCH2 8   //check which pin this uses
+
+//f1 pins
 #define SERVO 10
 #define TRIGGER 13
 #define ECHO 11
 #define TEMPERATURE 3
-#define SWITCH1 
-#define SWITCH2 
 
+//f2 pins
+#define TAPE_LEFT 0
+#define TAPE_RIGHT 1
+
+//f3 pins
+#define CRASH_SWITCH 11 //check which pin this uses
+
+//f1 defines
 #define SLOW_DIST 40  //cm away to start slowing down
 #define STOP_DIST 15  //cm away to stop
 #define STOP 0
 #define MAX_SPEED 255
-#define SLOW_INC 50   //amount to decrement speed by when slowing down
-#define LEFT -90
-#define RIGHT 90
+#define SLOW_DEC 50   //amount to decrement speed by when slowing down
+#define LEFT 1
+#define RIGHT 0
+
+//f2 defines
+
+//f3 defines
 
 // ==== VARIABLES ====
-Servo myservo;  // create servo object to control a servo
 
-float temp;
-float pulse;
-float distance;
-float SpeedOfSound;
+/***control variables***/
 int function = 0;
+boolean stuck = 0;
+/***end control variables***/
+
+/***collision (f1) variables***/
+Servo myservo;  // create servo object to control a servo
+float temp, pulse, distance, SpeedOfSound, 
+      rightDist, leftDist, sensorDist;
+/***end servo variables***/
+
+/***tapefollow (f2) variables***/
+int left, right,
+    leftspeed, rightspeed,
+    m = 1, q = 0, // PID control variables, D gain counters
+    p, d, con, //P correction, D correction, total correction
+    error, lerr = 0, recerr = 0, // track current, last, and most recent (if not same as last)
+    tape_thresh = 250;
+    
+//PID gains
+int kp = 20,
+    kd = 20,
+    vel = 60;
+/***end tapefollow variables***/
+
+/***roomba (f3) variables***/
+/***end roomba variables***/
+
 // == END VARIABLES ==
 
 void setup() {
@@ -32,7 +68,8 @@ void setup() {
   // attaches the servo on pin 10 to the servo object
   myservo.attach(SERVO);
   myservo.write(90);
-    
+
+  pinMode(CRASH_SWITCH, INPUT);
 
   // rangefinder pin modes
   pinMode(TRIGGER, OUTPUT);
@@ -52,39 +89,30 @@ void loop() {
     f2_loop();
   else if (function == 3)
     f3_loop();
-  else
-    continue;
 }
 
 /**
- * Loop for roomba function
+ * Loop for collision function
  * Robot moves at max speed until it gets close to a wall/surface
  * It then sweeps the area around it (180 degrees), checks if there is more room
  * to the left or to the right, and then moves at max speed in that direction
  */
 void f1_loop(){
   while(functionStatus() == 1){
-    int dist = ping();
+    sensorDist = ping();
     
     if (dist > SLOW_DIST) 
-      moveForward(MAX_SPEED);
-      
-    else if (dist > STOP_DIST){
-      int myspeed = MAX_SPEED;
-      while (ping() > STOP_DIST){
-        moveForward(myspeed);
-        myspeed -= SLOW_INC;
-        delay(10);
-      }
-    }
+      goForward(MAX_SPEED);
     else {
-      moveForward(STOP);
-      if (sweep() == LEFT)
-        turn(LEFT);
-      else
-        turn(RIGHT);
+      decelerate(MAX_SPEED);
+      delay(10);
     }
     
+    if (sweep() == LEFT){
+      turn(LEFT, 90);
+    else
+      turn(RIGHT, 90);
+    }
   }
 }
 
@@ -94,7 +122,40 @@ void f1_loop(){
  */
 void f2_loop(){
   while(functionStatus() == 2){
-      
+    //tape follow
+    left  = analogRead(TAPE_LEFT);
+    right = analogRead(TAPE_RIGHT);
+  
+    if     (left > tape_thresh && right > tape_thresh) { error =  0; } // oo
+    else if(left > tape_thresh && right < tape_thresh) { error = -1; } // ox
+    else if(left < tape_thresh && right > tape_thresh) { error =  1; } // xo
+    else if(left < tape_thresh && right < tape_thresh) {               // xx
+      if(lerr > 0){ error =  5; }
+      if(lerr < 0){ error = -5; }
+    }
+  
+    if(error != lerr) {
+      recerr = lerr;
+      q = m;
+      m = 1;
+    }
+  
+    p = kp * error;
+    d = (int)((float)kd * (float)(error - recerr)/(float)(q + m));
+    con = p + d;
+  
+    m = m + 1;
+  
+    rightspeed = vel - con;
+    leftspeed  = vel + con;
+  
+    Serial.print("Sensors: "); Serial.print(left); Serial.print(" | "); Serial.print(right); Serial.print("\tMotor: "); Serial.print(leftspeed); Serial.print(" | "); Serial.println(rightspeed);
+    delay(150);
+    //motor.speed(RIGHT_MOTOR, rightspeed < 255 ? rightspeed > 0 ? rightspeed : 0 : 255);
+    //motor.speed(LEFT_MOTOR, leftspeed  < 255 ? leftspeed  > 0 ? leftspeed  : 0 : 255);
+  
+    lerr = error;
+    // end tape following
   }
 }
 
@@ -114,8 +175,8 @@ void f3_loop(){
  * 2. returns the function variable so the function can be called and used in one line
  */
 int functionStatus(){
-  boolean s1 = digitalRead(SWITCH1); 
-  boolean s2 = digitalRead(SWITCH2);
+  int s1 = digitalRead(SWITCH1); 
+  int s2 = digitalRead(SWITCH2);
   
   if (s1 & !s2)
     function = 1;
@@ -130,6 +191,38 @@ int functionStatus(){
 }
 
 /**
+ * 
+ */
+void spiral(int direction, int radius){
+  stop();
+  int highSpeed = 150;
+  int lowSpeed = 0;
+
+  
+  if(direction == LEFT){
+    analogWrite(SPEED_A, highSpeed);
+    digitalWrite(MOTOR_A, HIGH);
+        for ( > 0 && digitalRead(CRASH_SWITCH) == LOW){
+      delay(10);
+      timeToTurn--;
+    }
+    analogWrite(SPEED_B, lowSpeed); 
+    digitalWrite(MOTOR_B, HIGH);
+  }
+  else{
+    analogWrite(SPEED_A, lowSpeed);
+    digitalWrite(MOTOR_A, HIGH);
+    for ( > 0 && digitalRead(CRASH_SWITCH) == LOW){
+      analogWrite(SPEED_B, highSpeed); 
+      digitalWrite(MOTOR_B, HIGH);
+      delay(10);
+      timeToTurn--;
+    }
+  }
+  stop();
+}
+
+/**
  * Sweeps the rangefinder from 90 degrees to 0, to 180, then back to 90,
  * pinging the rangefinder at 0 and 180 degrees.
  * 
@@ -137,12 +230,12 @@ int functionStatus(){
  */
 int sweep() {
   myservo.write(0);
-  delay(1500);
-  float leftDist = ping();
+  delay(1000);
+  leftDist = ping();
   
   myservo.write(180);
-  delay(1500);
-  float rightDist = ping();
+  delay(1000);
+  rightDist = ping();
 
   Serial.print("\nDistance to the left: ");
   Serial.print(leftDist);
@@ -186,9 +279,22 @@ float ping(){
 
   //Calculate the distance
   distance = pulse/(2*conversion);
-  
-  delayMicroseconds(100);
 
   return distance;
+}
+
+//robot moves forward at certain speed
+void goForward(int speed){
+  //skeleton function so code will compile
+}
+
+//robot pivots degrees specified in direction specified (RIGHT or LEFT)
+void turn(int direction, int degrees){
+  //skeleton function so code will compile
+}
+
+//decelerates to 0 from the speed specified
+void decelerate(int speed){
+  //skeleton function so code will compile
 }
 
