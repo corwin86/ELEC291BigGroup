@@ -15,8 +15,8 @@
 
 void setup() {
   //set up channels A & B with respecetive pins
-  pinMode(MOTOR_A, OUTPUT);  //Motor A pin
-  pinMode(MOTOR_B, OUTPUT);  //Motor B pin
+  pinMode(SPEED_A, OUTPUT);  //Motor A pin
+  pinMode(SPEED_B, OUTPUT);  //Motor B pin
   pinMode(HALL_EFFECT_LEFT, INPUT);
   pinMode(HALL_EFFECT_RIGHT, INPUT);
 
