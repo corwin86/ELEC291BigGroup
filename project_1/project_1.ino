@@ -193,34 +193,34 @@ int functionStatus(){
 /**
  * 
  */
-void circle(int direction, int radius){
-    int highSpeed = ;
-    int lowSpeed = 
-    int timeToTurn = (int) (2.0 * 3.1415 * radius / highSpeed);
+void spiral(int direction, int radius){
+  stop();
+  int highSpeed = 150;
+  int lowSpeed = 0;
 
-    if(direction == LEFT){
-      analogWrite(SPEED_A, highSpeed);
-      digitalWrite(MOTOR_A, HIGH);
-      analogWrite(SPEED_B, lowSpeed); 
-      digitalWrite(MOTOR_B, HIGH);
-    }
-    else{
-      analogWrite(SPEED_A, lowSpeed);
-      digitalWrite(MOTOR_A, HIGH);
-      analogWrite(SPEED_B, highSpeed); 
-      digitalWrite(MOTOR_B, HIGH);
-    }
-
-    while (timeToTurn > 0 && digitalRead(CRASH_SWITCH) == LOW){
+  
+  if(direction == LEFT){
+    analogWrite(SPEED_A, highSpeed);
+    digitalWrite(MOTOR_A, HIGH);
+        for ( > 0 && digitalRead(CRASH_SWITCH) == LOW){
       delay(10);
       timeToTurn--;
     }
-    
-    stop();
-    
+    analogWrite(SPEED_B, lowSpeed); 
+    digitalWrite(MOTOR_B, HIGH);
+  }
+  else{
+    analogWrite(SPEED_A, lowSpeed);
+    digitalWrite(MOTOR_A, HIGH);
+    for ( > 0 && digitalRead(CRASH_SWITCH) == LOW){
+      analogWrite(SPEED_B, highSpeed); 
+      digitalWrite(MOTOR_B, HIGH);
+      delay(10);
+      timeToTurn--;
+    }
+  }
+  stop();
 }
-
-void spiral(int direction, int size){}
 
 /**
  * Sweeps the rangefinder from 90 degrees to 0, to 180, then back to 90,
