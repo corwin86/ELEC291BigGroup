@@ -22,7 +22,6 @@
 #define STOP_DIST 15  //cm away to stop
 #define STOP 0
 #define MAX_SPEED 255
-#define SLOW_DEC 50   //amount to decrement speed by when slowing down
 #define LEFT 1
 #define RIGHT 0
 
@@ -34,7 +33,6 @@
 
 /***control variables***/
 int function = 0;
-boolean stuck = 0;
 /***end control variables***/
 
 /***collision (f1) variables***/
@@ -165,7 +163,11 @@ void f2_loop(){
  */
 void f3_loop(){
   while(functionStatus() == 3){
-    
+    spiral(LEFT);
+    if (sweep() == LEFT)
+      turn90degrees(LEFT);
+    else
+      turn90degrees(RIGHT);
   }
 }
 
@@ -191,32 +193,35 @@ int functionStatus(){
 }
 
 /**
- * 
+ * Moves the robot in a spiral until it runs into something
+ * --------------------DO WE NEED TO HAVE A DIRECTION? OR ALWAYS SPIRAL LEFT??---------------------------
  */
-void spiral(int direction, int radius){
+void spiral(int direction){
   stop();
-  int highSpeed = 150;
-  int lowSpeed = 0;
-
+  int highSpeed = 220;
+  int lowSpeed = 60;
   
   if(direction == LEFT){
+    analogWrite(SPEED_B, highSpeed);
+    digitalWrite(MOTOR_B, HIGH);
+    //while (digitalRead(CRASH_SWITCH) == LOW){
+    while(true){
+      analogWrite(SPEED_A, lowSpeed); 
+      digitalWrite(MOTOR_A, HIGH);
+      delay(500);
+      lowSpeed+=1;
+    }
+  }
+  
+  else{
     analogWrite(SPEED_A, highSpeed);
     digitalWrite(MOTOR_A, HIGH);
-        for ( > 0 && digitalRead(CRASH_SWITCH) == LOW){
-      delay(10);
-      timeToTurn--;
-    }
-    analogWrite(SPEED_B, lowSpeed); 
-    digitalWrite(MOTOR_B, HIGH);
-  }
-  else{
-    analogWrite(SPEED_A, lowSpeed);
-    digitalWrite(MOTOR_A, HIGH);
-    for ( > 0 && digitalRead(CRASH_SWITCH) == LOW){
-      analogWrite(SPEED_B, highSpeed); 
+    //while (digitalRead(CRASH_SWITCH) == LOW){
+    while(true){
+      analogWrite(SPEED_B, lowSpeed); 
       digitalWrite(MOTOR_B, HIGH);
-      delay(10);
-      timeToTurn--;
+      delay(500);
+      lowSpeed+=1;
     }
   }
   stop();
@@ -237,9 +242,7 @@ int sweep() {
   delay(1000);
   rightDist = ping();
 
-  Serial.print("\nDistance to the left: ");
   Serial.print(leftDist);
-  Serial.print("\nDistance to the right: ");
   Serial.print(rightDist);
   
   myservo.write(90);
@@ -247,6 +250,29 @@ int sweep() {
     return LEFT;
   else
     return RIGHT;
+}
+
+/**
+ * Checks all directions within 90 degrees of the front of the robot -------DO WE NEED THIS??-------
+ * 
+ * param: direction - direction to sweep (left or right)
+ * returns: distance - the greatest distance away from the bot over 90 degrees
+ */
+int checkDir(int direction){
+  int degrees = 85;
+  int distance;
+  while(degrees > 0 && degrees < 180){
+    servo.write(degrees);
+    int distL = ping();
+    if (distL > distance)
+      distance = distL;
+    if (direction == LEFT)
+      degrees--;
+    else
+      degrees++
+  }
+
+  return distance;
 }
 
 /**
