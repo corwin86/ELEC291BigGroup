@@ -1,6 +1,8 @@
 #include <Servo.h>
 
 //control pins !!!!!!add motor here!!!!!!------------------------------------------------------------------
+#define FORWARDS  LOW  //motor direction forward
+#define BACKWARDS HIGH //motor direction backward
 #define SWITCH1 2   //check which pin this uses
 #define SWITCH2 3   //check which pin this uses
 
@@ -26,7 +28,8 @@
 #define RIGHT 0
 
 //f2 defines
-
+#define TAPE_LEFT  1
+#define TAPE_RIGHT 0
 //f3 defines
 
 // ==== VARIABLES ====
@@ -42,17 +45,13 @@ float temp, pulse, distance, SpeedOfSound,
 /***end servo variables***/
 
 /***tapefollow (f2) variables***/
-int left, right,
-    leftspeed, rightspeed,
-    m = 1, q = 0, // PID control variables, D gain counters
-    p, d, con, //P correction, D correction, total correction
-    error, lerr = 0, recerr = 0, // track current, last, and most recent (if not same as last)
-    tape_thresh = 250;
-    
-//PID gains
-int kp = 20,
-    kd = 20,
-    vel = 60;
+
+int kp = 80,
+    kd = 0,
+    vel = 175;
+int last_error = 0, recent_error = 0;
+int t_cur = 0, t_recent = 0;
+int TAPE_THRESH = 600;
 /***end tapefollow variables***/
 
 /***roomba (f3) variables***/
@@ -119,40 +118,36 @@ void f1_loop(){
  */
 void f2_loop(){
   while(functionStatus() == 2){
-    //tape follow
-    left  = analogRead(TAPE_LEFT);
-    right = analogRead(TAPE_RIGHT);
-  
-    if     (left > tape_thresh && right > tape_thresh) { error =  0; } // oo
-    else if(left > tape_thresh && right < tape_thresh) { error = -1; } // ox
-    else if(left < tape_thresh && right > tape_thresh) { error =  1; } // xo
-    else if(left < tape_thresh && right < tape_thresh) {               // xx
-      if(lerr > 0){ error =  5; }
-      if(lerr < 0){ error = -5; }
+    // read values from IR sensors
+    int left  = analogRead(TAPE_LEFT);
+    int right = analogRead(TAPE_RIGHT);
+    
+    //if error is unchanged, both are on tape
+    int error = 0;
+    if     ( onTape(left) && !onTape(right)) { error =  1; }
+    else if(!onTape(left) &&  onTape(right)) { error = -1; }
+    else if(!onTape(left) && !onTape(right)) { error = last_error < 0 ? -5 : 5; }
+    
+    // find time spent in current and previous error states (for D gain)
+    if(error != last_error) {
+      recent_error = last_error;
+      t_recent = t_cur; //save time in recent error state
+      t_cur = 1;        //begin counting new error state
     }
-  
-    if(error != lerr) {
-      recerr = lerr;
-      q = m;
-      m = 1;
-    }
-  
-    p = kp * error;
-    d = (int)((float)kd * (float)(error - recerr)/(float)(q + m));
-    con = p + d;
-  
-    m = m + 1;
-  
-    rightspeed = vel - con;
-    leftspeed  = vel + con;
-  
-    Serial.print("Sensors: "); Serial.print(left); Serial.print(" | "); Serial.print(right); Serial.print("\tMotor: "); Serial.print(leftspeed); Serial.print(" | "); Serial.println(rightspeed);
-    delay(150);
-    //motor.speed(RIGHT_MOTOR, rightspeed < 255 ? rightspeed > 0 ? rightspeed : 0 : 255);
-    //motor.speed(LEFT_MOTOR, leftspeed  < 255 ? leftspeed  > 0 ? leftspeed  : 0 : 255);
-  
-    lerr = error;
-    // end tape following
+    
+    // calculate gains & correction
+    int p_gain = kp * error;
+    int d_gain = (int)( (float)kd * (float)(error - recent_error) / (float)(t_cur++ + t_recent) );
+    int correction = p_gain + d_gain;
+    
+    int leftspeed  = clamp(vel + correction, 0, 255);
+    int rightspeed = clamp(vel - correction, 0, 255);
+    
+    writeMotorSpeed(LEFT_MOTOR , LEFT_SPEED_PIN , leftspeed);
+    writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, rightspeed);
+    
+    // setup for next loop
+    last_error = error;
   }
 }
 
@@ -263,3 +258,22 @@ void decelerate(int speed){
   //skeleton function so code will compile
 }
 
+// ==============================
+//     Tape following helpers
+bool onTape(int reading) {
+  return reading > TAPE_THRESH;
+}
+
+void writeMotorSpeed(int motor, int motor_speed_pin, int vel) {
+  digitalWrite(motor, vel < 0 ? BACKWARDS : FORWARDS);
+  analogWrite(motor_speed_pin, vel);
+}
+
+/*
+ * Clamp val between min_r and max_r
+ */
+int clamp(int val, int min_r, int max_r) {
+  return val < max_r ? val > min_r ? val : min_r : max_r;
+}
+//   End Tape following helpers
+// ==============================
