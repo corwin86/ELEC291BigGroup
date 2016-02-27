@@ -101,6 +101,23 @@ void stop(){
    digitalWrite(MOTOR_B, HIGH);
 }
 
+void turn90degrees(int direction){
+   stop();
+   if(direction == 0){
+    analogWrite(SPEED_A, 100);
+    digitalWrite(MOTOR_A, HIGH);
+    analogWrite(SPEED_B, 100); 
+    digitalWrite(MOTOR_B, LOW);
+   }
+   else{
+    analogWrite(SPEED_A, 100);
+    digitalWrite(MOTOR_A, LOW);
+    analogWrite(SPEED_B, 100); 
+    digitalWrite(MOTOR_B, HIGH);
+   }
+   delay(90*9.8);
+   stop();
+}
 
 
 
