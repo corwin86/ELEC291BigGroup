@@ -8,7 +8,6 @@
 #define SPEED_A 5 //right speed
 #define SPEED_B 6 // left speed
 #define LEFT 1
-#define CRASH_SWITCH 0 //must be changed!!!!
 
 void setup() {
   //set up channels A & B with respecetive pins
@@ -64,28 +63,30 @@ void slowTurn(int degree){
  */
 void spiral(int direction){
   stop();
-  int highSpeed = 150;
-  int lowSpeed = 0;
+  int highSpeed = 220;
+  int lowSpeed = 60;
   
   if(direction == LEFT){
     analogWrite(SPEED_B, highSpeed);
     digitalWrite(MOTOR_B, HIGH);
-    while (digitalRead(CRASH_SWITCH) == LOW){
+    //while (digitalRead(CRASH_SWITCH) == LOW){
+    while(true){
       analogWrite(SPEED_A, lowSpeed); 
       digitalWrite(MOTOR_A, HIGH);
       delay(500);
-      lowSpeed+=15;
+      lowSpeed+=1;
     }
   }
   
   else{
     analogWrite(SPEED_A, highSpeed);
     digitalWrite(MOTOR_A, HIGH);
-    while (digitalRead(CRASH_SWITCH) == LOW){
+    //while (digitalRead(CRASH_SWITCH) == LOW){
+    while(true){
       analogWrite(SPEED_B, lowSpeed); 
       digitalWrite(MOTOR_B, HIGH);
       delay(500);
-      lowSpeed+=15;
+      lowSpeed+=1;
     }
   }
   stop();
