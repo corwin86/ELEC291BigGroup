@@ -248,10 +248,13 @@ float ping(){
   return distance;
 }
 
-//robot moves forward at certain speed
+/*go forward at a given speed*/
 void goForward(int speed){
-  //skeleton function so code will compile
-}
+  digitalWrite(LEFT_MOTOR, FORWARDS);
+  analogWrite(LEFT_SPEED_PIN, speed);
+  digitalWrite(RIGHT_MOTOR, FORWARDS);
+  analogWrite(RIGHT_SPEED_PIN, speed);
+  }
 
 //robot pivots degrees specified in direction specified (RIGHT or LEFT)
 void turn(int direction, int degrees){
