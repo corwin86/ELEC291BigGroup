@@ -7,8 +7,16 @@
 #define RIGHT_MOTOR     7    //left motor pin
 #define LEFT_SPEED_PIN  5    //right motor speed setting pin
 #define RIGHT_SPEED_PIN 6    //left motor speed setting pin
-#define SWITCH1         2   //check which pin this uses
-#define SWITCH2         3   //check which pin this uses
+#define SWITCH1         10   //check which pin this uses
+#define SWITCH2         9   //check which pin this uses
+
+#define LEFT 1
+#define RIGHT 0
+
+//Hall effect pins
+#define HALL_EFFECT_LEFT 8
+#define HALL_EFFECT_RIGHT 9
+#define HALL_HIGH 600
 
 //f1 pins
 #define SERVO 10
@@ -21,20 +29,7 @@
 #define TAPE_RIGHT 1
 
 //f3 pins
-
-//f1 defines
-#define SLOW_DIST 40  //cm away to start slowing down
-#define STOP_DIST 15  //cm away to stop
-#define STOP 0
-#define MAX_SPEED 255
-#define SLOW_DEC 50   //amount to decrement speed by when slowing down
-#define LEFT 1
-#define RIGHT 0
-
-//f2 defines
-#define TAPE_LEFT  1
-#define TAPE_RIGHT 0
-//f3 defines
+#define CRASH_SWITCH 11 //check which pin this uses
 
 // ==== VARIABLES ====
 
@@ -69,13 +64,26 @@ void setup() {
   // attaches the servo on pin 10 to the servo object
   myservo.attach(SERVO);
   myservo.write(90);
-    
+
+  pinMode(CRASH_SWITCH, INPUT);
+  pinMode(SWITCH1, INPUT_PULLUP);
+  pinMode(SWITCH2, INPUT_PULLUP);
 
   // rangefinder pin modes
   pinMode(TRIGGER, OUTPUT);
   pinMode(ECHO, INPUT);
   pinMode(TEMPERATURE, INPUT);
 
+  //set up motor pins and hall effect pins
+  pinMode(RIGHT_SPEED_PIN, OUTPUT);  
+  pinMode(LEFT_SPEED_PIN, OUTPUT);
+  pinMonde(LEFT_MOTOR, OUTPUT);
+  pinMode(RIGHT_MOTOR, OUTPUT);
+
+  //set up hall effect pin
+  pinMode(HALL_EFFECT_LEFT, INPUT);
+  pinMode(HALL_EFFECT_RIGHT, INPUT);
+  
 }
 
 //determines which function loop to run
@@ -162,7 +170,17 @@ void f2_loop(){
  */
 void f3_loop(){
   while(functionStatus() == 3){
-    
+    spiral(LEFT);
+
+    if (sweep() == LEFT)
+      turn90degrees(LEFT);
+    else
+      turn90degrees(RIGHT);
+    moveForward(MAX_SPEED);
+    delay((int)ping() * 50);
+    stop();
+   // wallFollow();
+
   }
 }
 
@@ -188,6 +206,41 @@ int functionStatus(){
 }
 
 /**
+ * Moves the robot in a spiral until it runs into something
+ * --------------------DO WE NEED TO HAVE A DIRECTION? OR ALWAYS SPIRAL LEFT??---------------------------
+ */
+void spiral(int direction){
+  stop();
+  int highSpeed = 220;
+  int lowSpeed = 60;
+  
+  if(direction == LEFT){
+    analogWrite(LEFT_SPEED_PIN, highSpeed);
+    digitalWrite(LEFT_MOTOR, HIGH);
+    //while (digitalRead(CRASH_SWITCH) == LOW){
+    while(true){
+      analogWrite(RIGHT_SPEED_PIN, lowSpeed); 
+      digitalWrite(RIGHT_MOTOR, HIGH);
+      delay(500);
+      lowSpeed+=1;
+    }
+  }
+  
+  else{
+    analogWrite(RIGHT_SPEED_PIN, highSpeed);
+    digitalWrite(RIGHT_MOTOR, HIGH);
+    //while (digitalRead(CRASH_SWITCH) == LOW){
+    while(true){
+      analogWrite(LEFT_SPEED_PIN, lowSpeed); 
+      digitalWrite(LEFT_MOTOR, HIGH);
+      delay(500);
+      lowSpeed+=1;
+    }
+  }
+  stop();
+}
+
+/**
  * Sweeps the rangefinder from 90 degrees to 0, to 180, then back to 90,
  * pinging the rangefinder at 0 and 180 degrees.
  * 
@@ -202,9 +255,7 @@ int sweep() {
   delay(1000);
   rightDist = ping();
 
-  Serial.print("\nDistance to the left: ");
   Serial.print(leftDist);
-  Serial.print("\nDistance to the right: ");
   Serial.print(rightDist);
   
   myservo.write(90);
@@ -212,6 +263,29 @@ int sweep() {
     return LEFT;
   else
     return RIGHT;
+}
+
+/**
+ * Checks all directions within 90 degrees of the front of the robot -------DO WE NEED THIS??-------
+ * 
+ * param: direction - direction to sweep (left or right)
+ * returns: distance - the greatest distance away from the bot over 90 degrees
+ */
+int checkDir(int direction){
+  int degrees = 85;
+  int distance;
+  while(degrees > 0 && degrees < 180){
+    servo.write(degrees);
+    int distL = ping();
+    if (distL > distance)
+      distance = distL;
+    if (direction == LEFT)
+      degrees--;
+    else
+      degrees++
+  }
+
+  return distance;
 }
 
 /**
@@ -248,7 +322,10 @@ float ping(){
   return distance;
 }
 
-/*go forward at a given speed*/
+/*go forward at a given speed
+ *
+ *param: speed (0-255) to set
+ */
 void goForward(int speed){
   digitalWrite(LEFT_MOTOR, FORWARDS);
   analogWrite(LEFT_SPEED_PIN, speed);
@@ -261,9 +338,26 @@ void turn(int direction, int degrees){
   //skeleton function so code will compile
 }
 
-//decelerates to 0 from the speed specified
+/*Decelarate from cuurent speed to 0 in 2 seconds*/
 void decelerate(int speed){
-  //skeleton function so code will compile
+  int steps = speed / 10; 
+  for(int i = 0; i < 10; i++){
+    analogWrite(RIGHT_SPEED_PIN, speed - steps * i);
+    analogWrite(LEFT_SPEED_PIN, speed - steps * i);
+    delay(200);
+  }
+  analogWrite(RIGHT_SPEED_PIN, 0);
+  analogWrite(LEFT_SPEED_PIN, 0);
+}
+
+/*
+ * Stops and returns to default forward direction
+ */
+void stop(){
+   analogWrite(RIGHT_SPEED_PIN, 0);
+   digitalWrite(RIGHT_MOTOR, LOW);
+   analogWrite(LEFT_SPEED_PIN, 0); 
+   digitalWrite(LEFT_MOTOR, LOW);
 }
 
 // ==============================
