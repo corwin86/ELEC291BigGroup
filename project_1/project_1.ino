@@ -164,6 +164,7 @@ void f2_loop(){
 void f3_loop(){
   while(functionStatus() == 3){
     spiral(LEFT);
+<<<<<<< HEAD
 //    if (sweep() == LEFT)
 //      turn90degrees(LEFT);
 //    else
@@ -172,6 +173,12 @@ void f3_loop(){
 //    delay((int)ping() * 50);
 //    stop();
     wallFollow();
+=======
+    if (sweep() == LEFT)
+      turn90degrees(LEFT);
+    else
+      turn90degrees(RIGHT);
+>>>>>>> 0b14eaf1f1d00326c165d42d7ea6d61e6e483a0a
   }
 }
 
