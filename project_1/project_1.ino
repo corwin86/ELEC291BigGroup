@@ -1,4 +1,5 @@
 #include <Servo.h>
+#include <LiquidCrystal.h>;
 
 //control pins !!!!!!add motor here!!!!!!------------------------------------------------------------------
 #define FORWARDS        LOW  //motor direction forward
@@ -40,6 +41,7 @@
 
 /***control variables***/
 int function = 0;
+LiquidCrystal lcd(13,12,11,10,9,8); // these need to be changed
 /***end control variables***/
 
 /***collision (f1) variables***/
@@ -69,7 +71,9 @@ void setup() {
   // attaches the servo on pin 10 to the servo object
   myservo.attach(SERVO);
   myservo.write(90);
-    
+
+  //setup lcd
+  lcd.begin(16,2);
 
   // rangefinder pin modes
   pinMode(TRIGGER, OUTPUT);
@@ -285,3 +289,19 @@ int clamp(int val, int min_r, int max_r) {
 }
 //   End Tape following helpers
 // ==============================
+
+/*
+ * This function displays the left motor speed and the right motor speed onto the LCD display
+ */
+void printSpeed() {
+  int leftSpeed = 0; // this needs to be replaced
+  int rightSpeed = 0; // this needs to be replaced
+  
+  lcd.clear();
+  lcd.home();
+  lcd.print("Left speed: ");
+  lcd.print(leftSpeed);
+  lcd.setCursor(0, 1);
+  lcd.print("Right speed: ");
+  lcd.print(rightSpeed);
+}
