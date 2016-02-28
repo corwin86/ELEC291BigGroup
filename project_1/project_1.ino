@@ -1,10 +1,14 @@
 #include <Servo.h>
 
 //control pins !!!!!!add motor here!!!!!!------------------------------------------------------------------
-#define FORWARDS  LOW  //motor direction forward
-#define BACKWARDS HIGH //motor direction backward
-#define SWITCH1 2   //check which pin this uses
-#define SWITCH2 3   //check which pin this uses
+#define FORWARDS        LOW  //motor direction forward
+#define BACKWARDS       HIGH //motor direction backward
+#define LEFT_MOTOR      4    //right motor pin
+#define RIGHT_MOTOR     7    //left motor pin
+#define LEFT_SPEED_PIN  5    //right motor speed setting pin
+#define RIGHT_SPEED_PIN 6    //left motor speed setting pin
+#define SWITCH1         2   //check which pin this uses
+#define SWITCH2         3   //check which pin this uses
 
 //f1 pins
 #define SERVO 10
@@ -97,16 +101,17 @@ void f1_loop(){
   while(functionStatus() == 1){
     sensorDist = ping();
     
-    if (dist > SLOW_DIST) 
+    if (sensorDist > SLOW_DIST) 
       goForward(MAX_SPEED);
     else {
       decelerate(MAX_SPEED);
       delay(10);
     }
     
-    if (sweep() == LEFT){
+    if (sweep() == LEFT) {
       turn(LEFT, 90);
-    else
+    }
+    else {
       turn(RIGHT, 90);
     }
   }
