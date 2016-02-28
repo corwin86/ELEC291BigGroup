@@ -33,41 +33,79 @@ void loop() {
   delay(3000);
 }
 
-void slowTurn(int direction){
+/*
+ * Performs a turn to the right or left, still need to be calibrated
+ */
+void slowTurn(int degree){
+   
     stop();
-    int slowSpeed = 30;
-    int reverseSlowSpeed = -slowSpeed;
+    int slowSpeed = 250;
 
-    long startTime; 
-    long newTime;
-
-    long timeNeeded = direction * 50; // calibrate later
-
-    newTime = millis();
+    long timeNeeded = degree * 50; // calibrate later
     
-    if(direction < 0){     
-       while((millis() - newTime) < timeNeeded){         
+    if(degree < 0){     
          digitalWrite(MOTOR_A, HIGH);
          analogWrite(SPEED_A, slowSpeed);
-         digitalWrite(MOTOR_B, HIGH);
-         analogWrite(SPEED_B, reverseSlowSpeed);
-       }
+         digitalWrite(MOTOR_B, LOW);
+         analogWrite(SPEED_B, slowSpeed);  
+         delay(timeNeeded);              
     }
     
     else {
-      while((millis() - newTime) < timeNeeded){
-         digitalWrite(MOTOR_A, HIGH);
-         analogWrite(SPEED_A, reverseSlowSpeed);
+      
+         digitalWrite(MOTOR_A, LOW);
+         analogWrite(SPEED_A, slowSpeed);
          digitalWrite(MOTOR_B, HIGH);
-         analogWrite(SPEED_B, slowSpeed);        
-       }
+         analogWrite(SPEED_B, slowSpeed);  
+         delay(timeNeeded);      
     }
+    
     stop();  
+    
 }
 
+/**
+ * Makes robot move in a spiral until it hits something
+ */
+void spiral(int direction){
+  stop();
+  int highSpeed = 220;
+  int lowSpeed = 60;
+  
+  if(direction == LEFT){
+    analogWrite(SPEED_B, highSpeed);
+    digitalWrite(MOTOR_B, HIGH);
+    //while (digitalRead(CRASH_SWITCH) == LOW){
+    while(true){
+      analogWrite(SPEED_A, lowSpeed); 
+      digitalWrite(MOTOR_A, HIGH);
+      delay(500);
+      lowSpeed+=1;
+    }
+  }
+  
+  else{
+    analogWrite(SPEED_A, highSpeed);
+    digitalWrite(MOTOR_A, HIGH);
+    //while (digitalRead(CRASH_SWITCH) == LOW){
+    while(true){
+      analogWrite(SPEED_B, lowSpeed); 
+      digitalWrite(MOTOR_B, HIGH);
+      delay(500);
+      lowSpeed+=1;
+    }
+  }
+  stop();
+}
+
+/*
+ * stops and returns to default forward direction
+ */
 void stop(){
-  digitalWrite(MOTOR_A, LOW);
-  digitalWrite(MOTOR_B, LOW); 
+   analogWrite(SPEED_A, 0);
+   digitalWrite(MOTOR_A, LOW);
+   analogWrite(SPEED_B, 0); 
+   digitalWrite(MOTOR_B, LOW);
 }
 
 /*go forward at a given speed*/
@@ -92,8 +130,8 @@ void turn(int direction, int degree){}
 
 void calibrate(int speed_left, int speed_right){
   //find time difference for sensor1
-  analogWrite(MOTOR_A, speed_right);
-  analogWrite(MOTOR_B, speed_left);
+  analogWrite(SPEED_A, speed_right);
+  analogWrite(SPEED_B, speed_left);
   int sensor1 = analogRead(HALL_EFFECT_LEFT);
   int sensor2 = analogRead(HALL_EFFECT_RIGHT);
 
@@ -112,15 +150,34 @@ void calibrate(int speed_left, int speed_right){
   
   if(countLeft < countRight){
     while(countLeft < countRight){
-      analogWrite(MOTOR_B, --speed_left);
+      analogWrite(SPEED_B, --speed_left);
     }
   }
   else{
     while(countRight < countLeft){
-      analogWrite(MOTOR_A, --speed_right);
+      analogWrite(SPEED_A, --speed_right);
     }
   }
 }
+
+void turn90degrees(int direction){
+   stop();
+   if(direction == 0){
+    analogWrite(SPEED_A, 100);
+    digitalWrite(MOTOR_A, HIGH);
+    analogWrite(SPEED_B, 100); 
+    digitalWrite(MOTOR_B, LOW);
+   }
+   else{
+    analogWrite(SPEED_A, 100);
+    digitalWrite(MOTOR_A, LOW);
+    analogWrite(SPEED_B, 100); 
+    digitalWrite(MOTOR_B, HIGH);
+   }
+   delay(90*9.8);
+   stop();
+}
+
 
    
 
