@@ -4,6 +4,20 @@
 #define SWITCH1 9   //check which pin this uses
 #define SWITCH2 8   //check which pin this uses
 
+#define MOTOR_A 4 //right direction
+#define MOTOR_B 7 //left direction
+#define SPEED_A 5 //right speed
+#define SPEED_B 6 //left speed
+
+#define LEFT 1
+#define RIGHT 0
+
+//Hall effect pins
+#define HALL_EFFECT_LEFT 8
+#define HALL_EFFECT_RIGHT 9
+#define HALL_LOW 300
+#define HALL_HIGH 600
+
 //f1 pins
 #define SERVO 10
 #define TRIGGER 13
@@ -73,6 +87,12 @@ void setup() {
   pinMode(TRIGGER, OUTPUT);
   pinMode(ECHO, INPUT);
   pinMode(TEMPERATURE, INPUT);
+
+  //set up motor pins and hall effect pins
+  pinMode(SPEED_A, OUTPUT);  //Motor A pin
+  pinMode(SPEED_B, OUTPUT);  //Motor B pin
+  pinMode(HALL_EFFECT_LEFT, INPUT);
+  pinMode(HALL_EFFECT_RIGHT, INPUT);
 
 }
 
@@ -164,21 +184,16 @@ void f2_loop(){
 void f3_loop(){
   while(functionStatus() == 3){
     spiral(LEFT);
-<<<<<<< HEAD
-//    if (sweep() == LEFT)
-//      turn90degrees(LEFT);
-//    else
-//      turn90degrees(RIGHT);
-//    moveForward(MAX_SPEED);
-//    delay((int)ping() * 50);
-//    stop();
-    wallFollow();
-=======
+
     if (sweep() == LEFT)
       turn90degrees(LEFT);
     else
       turn90degrees(RIGHT);
->>>>>>> 0b14eaf1f1d00326c165d42d7ea6d61e6e483a0a
+    moveForward(MAX_SPEED);
+    delay((int)ping() * 50);
+    stop();
+   // wallFollow();
+
   }
 }
 
@@ -320,18 +335,41 @@ float ping(){
   return distance;
 }
 
-//robot moves forward at certain speed
+/*go forward at a given speed
+ *
+ *param: speed (0-255) to set
+ */
 void goForward(int speed){
-  //skeleton function so code will compile
-}
+  digitalWrite(MOTOR_A, HIGH);
+  analogWrite(SPEED_A, speed);
+  digitalWrite(MOTOR_B, HIGH);
+  analogWrite(SPEED_B, speed);
+  }
 
 //robot pivots degrees specified in direction specified (RIGHT or LEFT)
 void turn(int direction, int degrees){
   //skeleton function so code will compile
 }
 
-//decelerates to 0 from the speed specified
+/*Decelarate from cuurent speed to 0 in 2 seconds*/
 void decelerate(int speed){
-  //skeleton function so code will compile
+  int steps = speed / 10; 
+  for(int i = 0; i < 10; i++){
+    analogWrite(SPEED_A, speed - steps * i);
+    analogWrite(SPEED_B, speed - steps * i);
+    delay(200);
+  }
+  analogWrite(SPEED_A, 0);
+  analogWrite(SPEED_B, 0);
+}
+
+/*
+ * Stops and returns to default forward direction
+ */
+void stop(){
+   analogWrite(SPEED_A, 0);
+   digitalWrite(MOTOR_A, LOW);
+   analogWrite(SPEED_B, 0); 
+   digitalWrite(MOTOR_B, LOW);
 }
 

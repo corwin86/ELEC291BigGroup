@@ -1,9 +1,9 @@
-#define MOTOR_A 4 #right
-#define MOTOR_B 7 #left
+#define MOTOR_A 4 //right
+#define MOTOR_B 7 //left
 #define BRAKE_A 
 #define BRAKE_B 
-#define SPEED_A 5 #right
-#define SPEED_B 6 #left
+#define SPEED_A 5 //right
+#define SPEED_B 6 //left
 
 #define LEFT 1
 #define RIGHT 0
@@ -24,11 +24,7 @@ void setup() {
 
 void loop() {
 
-  digitalWrite(MOTOR_A, HIGH);
-  analogWrite(SPEED_A, 255);
-
-  digitalWrite(MOTOR_B, HIGH);
-  analogWrite(SPEED_B, 255);
+  spiral(LEFT);
 
   delay(3000);
 }
@@ -120,7 +116,7 @@ void goForward(int speed){
 void decelerate(int speed){
   int steps = speed / 10; 
   for(int i = 0; i < 10; i++){
-    digitialWrite(MOTOR_A, speed - steps * i);
+    digitalWrite(MOTOR_A, speed - steps * i);
     delay(200);
   }
   digitalWrite(MOTOR_A, 0);
