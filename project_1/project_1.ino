@@ -4,12 +4,12 @@
 //control pins !!!!!!add motor here!!!!!!------------------------------------------------------------------
 #define FORWARDS        LOW  //motor direction forward
 #define BACKWARDS       HIGH //motor direction backward
-#define LEFT_MOTOR      4    //right motor pin
-#define RIGHT_MOTOR     7    //left motor pin
-#define LEFT_SPEED_PIN  5    //right motor speed setting pin
-#define RIGHT_SPEED_PIN 6    //left motor speed setting pin
-#define SWITCH1         9   //check which pin this uses
-#define SWITCH2         8   //check which pin this uses
+#define LEFT_MOTOR      4    //left motor pin
+#define RIGHT_MOTOR     7    //right motor pin
+#define LEFT_SPEED_PIN  5    //left motor speed setting pin
+#define RIGHT_SPEED_PIN 6    //right motor speed setting pin
+#define SWITCH1         9    //function switches
+#define SWITCH2         8    //(s1 ^ !s2) = f1, (!s1 ^ s2) = f2, (s1 ^ s2) - f3, (!s2 ^ !s2) = off
 
 #define LEFT 1
 #define RIGHT 0
@@ -26,13 +26,14 @@
 #define TEMPERATURE 3
 
 #define SLOW_DIST 60
+#define STOP_DIST 2.5
 
 //f2 pins
 #define TAPE_LEFT 0
 #define TAPE_RIGHT 1
 
 //f3 pins
-#define CRASH_SWITCH 11 //check which pin this uses
+#define CRASH_SWITCH 13 //check which pin this uses
 
 #define MAX_SPEED 255
 
@@ -61,6 +62,7 @@ int TAPE_THRESH = 600;
 /***end tapefollow variables***/
 
 /***roomba (f3) variables***/
+
 /***end roomba variables***/
 
 // == END VARIABLES ==
@@ -83,6 +85,9 @@ void setup() {
   pinMode(TRIGGER, OUTPUT);
   pinMode(ECHO, INPUT);
   pinMode(TEMPERATURE, INPUT);
+
+  //crash switch pinmode
+  pinMode(CRASH_SWITCH, INPUT_PULLUP);
 
   //set up motor pins and hall effect pins
   pinMode(RIGHT_SPEED_PIN, OUTPUT);
@@ -130,7 +135,7 @@ void f1_loop() {
       distCount++;
     }
     else {
-      decelerate(MAX_SPEED);
+      decelerate();
       delay(500);
       if (sweep() == LEFT) {
         turn90degrees(LEFT);
@@ -241,8 +246,7 @@ void spiral() {
 
   analogWrite(LEFT_SPEED_PIN, highSpeed);
   digitalWrite(LEFT_MOTOR, HIGH);
-  //while (digitalRead(CRASH_SWITCH) == LOW){
-  while (true) {
+  while (digitalRead(CRASH_SWITCH) == HIGH) {
     analogWrite(RIGHT_SPEED_PIN, lowSpeed);
     digitalWrite(RIGHT_MOTOR, HIGH);
     delay(500);
@@ -346,16 +350,23 @@ void goForward(int speed) {
   analogWrite(RIGHT_SPEED_PIN, speed);
 }
 
-/*Decelarate from cuurent speed to 0 in 2 seconds*/
-void decelerate(int speed) {
-  int steps = speed / 10;
-  for (int i = 0; i < 10; i++) {
-    analogWrite(RIGHT_SPEED_PIN, speed - steps * i);
-    analogWrite(LEFT_SPEED_PIN, speed - steps * i);
-    delay(100);
-  }
-  analogWrite(RIGHT_SPEED_PIN, 0);
-  analogWrite(LEFT_SPEED_PIN, 0);
+/**Decelarate from cuurent speed to 0 in 2 seconds
+
+*/
+void decelerate() {
+  //  int steps = speed / 10;
+  //  for(int i = 0; i < 10; i++){
+  //    analogWrite(RIGHT_SPEED_PIN, speed - steps * i);
+  //    analogWrite(LEFT_SPEED_PIN, speed - steps * i);
+  //    delay(200);
+  //  }
+  //  analogWrite(RIGHT_SPEED_PIN, 0);
+  //  analogWrite(LEFT_SPEED_PIN, 0);
+  int p = ping();
+  int c = p < STOP_DIST ? MAX_SPEED : MAX_SPEED * (SLOW_DIST - p) / SLOW_DIST;
+
+  writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, MAX_SPEED - c);
+  writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, MAX_SPEED - c);
 }
 
 /*
