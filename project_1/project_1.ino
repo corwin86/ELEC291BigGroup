@@ -26,7 +26,7 @@
 #define TEMPERATURE 3
 
 #define SLOW_DIST 60
-#define STOP_DIST 2.5
+#define STOP_DIST 4
 
 //f2 pins
 #define TAPE_LEFT 0
@@ -137,7 +137,7 @@ void f1_loop() {
     else {
       decelerate();
       delay(500);
-      if (sweep() == LEFT) {
+      if (sweep() == RIGHT) {
         turn90degrees(LEFT);
       }
       else {
@@ -362,11 +362,18 @@ void decelerate() {
   //  }
   //  analogWrite(RIGHT_SPEED_PIN, 0);
   //  analogWrite(LEFT_SPEED_PIN, 0);
-  int p = ping();
-  int c = p < STOP_DIST ? MAX_SPEED : MAX_SPEED * (SLOW_DIST - p) / SLOW_DIST;
+  int m_speed = MAX_SPEED;
+  int p = STOP_DIST + 1;
+  while(p > STOP_DIST) {
+    p = ping();
+    int c = MAX_SPEED * (SLOW_DIST - p) / SLOW_DIST - 50;
 
-  writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, MAX_SPEED - c);
-  writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, MAX_SPEED - c);
+    m_speed = MAX_SPEED - c;
+  
+    writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, m_speed);
+    writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, m_speed);
+  }
+  stop();
 }
 
 /*
