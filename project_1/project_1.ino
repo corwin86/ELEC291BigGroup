@@ -8,8 +8,8 @@
 #define RIGHT_MOTOR     7    //left motor pin
 #define LEFT_SPEED_PIN  5    //right motor speed setting pin
 #define RIGHT_SPEED_PIN 6    //left motor speed setting pin
-#define SWITCH1         10   //check which pin this uses
-#define SWITCH2         9   //check which pin this uses
+#define SWITCH1         9   //check which pin this uses
+#define SWITCH2         8   //check which pin this uses
 
 #define LEFT 1
 #define RIGHT 0
@@ -25,12 +25,16 @@
 #define ECHO 11
 #define TEMPERATURE 3
 
+#define SLOW_DIST 30
+
 //f2 pins
 #define TAPE_LEFT 0
 #define TAPE_RIGHT 1
 
 //f3 pins
 #define CRASH_SWITCH 11 //check which pin this uses
+
+#define MAX_SPEED 255
 
 // ==== VARIABLES ====
 
@@ -82,7 +86,7 @@ void setup() {
   //set up motor pins and hall effect pins
   pinMode(RIGHT_SPEED_PIN, OUTPUT);  
   pinMode(LEFT_SPEED_PIN, OUTPUT);
-  pinMonde(LEFT_MOTOR, OUTPUT);
+  pinMode(LEFT_MOTOR, OUTPUT);
   pinMode(RIGHT_MOTOR, OUTPUT);
 
   //set up hall effect pin
@@ -111,6 +115,7 @@ void loop() {
  * to the left or to the right, and then moves at max speed in that direction
  */
 void f1_loop(){
+  
   while(functionStatus() == 1){
     sensorDist = ping();
     
@@ -181,7 +186,7 @@ void f3_loop(){
       turn90degrees(LEFT);
     else
       turn90degrees(RIGHT);
-    moveForward(MAX_SPEED);
+    goForward(MAX_SPEED);
     delay((int)ping() * 50);
     stop();
    // wallFollow();
@@ -280,14 +285,14 @@ int checkDir(int direction){
   int degrees = 85;
   int distance;
   while(degrees > 0 && degrees < 180){
-    servo.write(degrees);
+    myservo.write(degrees);
     int distL = ping();
     if (distL > distance)
       distance = distL;
     if (direction == LEFT)
       degrees--;
     else
-      degrees++
+      degrees++;
   }
 
   return distance;
@@ -400,3 +405,22 @@ void printSpeed() {
   lcd.print("Right speed: ");
   lcd.print(rightSpeed);
 }
+
+void turn90degrees(int direction){
+   stop();
+   if(direction == 0){
+    analogWrite(RIGHT_SPEED_PIN, 100);
+    digitalWrite(RIGHT_MOTOR, HIGH);
+    analogWrite(LEFT_SPEED_PIN, 100); 
+    digitalWrite(LEFT_MOTOR, LOW);
+   }
+   else{
+    analogWrite(RIGHT_SPEED_PIN, 100);
+    digitalWrite(RIGHT_MOTOR, LOW);
+    analogWrite(LEFT_SPEED_PIN, 100); 
+    digitalWrite(LEFT_MOTOR, HIGH);
+   }
+   delay(90*9.8);
+   stop();
+}
+
