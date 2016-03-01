@@ -25,5 +25,12 @@ void loop(){
   
   digitalWrite(LEFT_SPEED_PIN, 0);
   digitalWrite(RIGHT_SPEED_PIN, 0);
+  delay(1000);
+  speed = 150;
+  digitalWrite(LEFT_MOTOR, BACKWARDS);
+  digitalWrite(RIGHT_MOTOR, BACKWARDS);
+  digitalWrite(RIGHT_SPEED_PIN, speed);
+  digitalWrite(LEFT_sPEED_PIN, speed);
+  delay(250);
   
 }
