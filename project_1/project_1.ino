@@ -9,7 +9,7 @@
 #define LEFT_SPEED_PIN  5     //left motor speed setting pin
 #define RIGHT_SPEED_PIN 6     //right motor speed setting pin
 #define SWITCH1         9     //function switches
-#define SWITCH2         8     //(s1 ^ !s2) = f1, (!s1 ^ s2) = f2, (s1 ^ s2) - f3, (!s2 ^ !s2) = off
+#define SWITCH2         8     //(s1^!s2)=>f1, (!s1^s2)=>f2, (s1^s2)=>f3, (!s2^!s2)=>off
 
 //control defines
 #define TURN_CONST      9.8   //experimentally derived, consistent up to ~180 degrees
@@ -46,14 +46,12 @@
 
 /***control variables***/
 int function = 0;
-//LiquidCrystal lcd(13,12,11,10,9,8); // these need to be changed
 /***end control variables***/
 
 /***collision (f1) variables***/
 Servo myservo;  // create servo object to control a servo
 float temp, pulse, distance, SpeedOfSound,
       rightDist, leftDist, sensorDist;
-int   distCount = 0;
 /***end collision variables***/
 
 /***tapefollow (f2) variables***/
@@ -67,6 +65,7 @@ int TAPE_THRESH = 600;
 
 /***roomba (f3) variables***/
 int spiralCount = 5;
+int distCount = 0;
 /***end roomba variables***/
 
 // == END VARIABLES ==
@@ -80,9 +79,6 @@ void setup() {
 
   pinMode(SWITCH1, INPUT_PULLUP);
   pinMode(SWITCH2, INPUT_PULLUP);
-
-  //setup lcd
-  //lcd.begin(16,2);
 
   // rangefinder pin modes
   pinMode(TRIGGER, OUTPUT);
@@ -108,7 +104,6 @@ void setup() {
 void loop() {
   //updates the current function status, loops until valid function
   functionStatus();
-  //  Serial.println(function);
 
   if (function == 1)
     f1_loop();
@@ -119,24 +114,21 @@ void loop() {
 }
 
 /**
-   Loop for collision function
+   Loop for collision function (f1)
    Robot moves at max speed until it gets close to a wall/surface
    It then sweeps the area around it (180 degrees), checks if there is more room
    to the left or to the right, and then moves at max speed in that direction
 */
 void f1_loop() {
-
   while (functionStatus() == 1) {
     sensorDist = ping();
-    //    Serial.print("distance from sensor:");
-    //    Serial.println(sensorDist);
 
+    //as long as the robot has space, move at max speed
     if (sensorDist > SLOW_DIST) {
       goForward(MAX_SPEED);
     }
-    //    else if (distCount < 5) {
-    //      distCount++;
-    //    }
+    //if it doesn't have space, slow down, look both ways, and turn
+    //90 degrees in the direction with the most space and continue
     else {
       decelerate();
       delay(250);
@@ -146,7 +138,6 @@ void f1_loop() {
       else {
         turn(90, RIGHT);
       }
-      //      distCount = 0;
     }
   }
 }
@@ -157,7 +148,6 @@ void f1_loop() {
 */
 void f2_loop() {
   while (functionStatus() == 2) {
-    //    Serial.println("in function 2");
     // read values from IR sensors
     int left  = analogRead(TAPE_LEFT);
     int right = analogRead(TAPE_RIGHT);
@@ -202,27 +192,20 @@ void f2_loop() {
    IT'S A ROOMBA...
 */
 void f3_loop() {
-  //Serial.println("in function 3");
   while (functionStatus() == 3) {
 
     //every 5 moves, do a spiral
     if (spiralCount >= 5) {
+      //move to (hopefully) the middle of the room by a function of 
+      //the distance to the other side
       goForward(MAX_SPEED);
-      delay(ping() * 50);
+      delay(ping() * 100);
       spiral();
       spiralCount = 0;
     }
 
     //then, bounce off walls for 5 moves
-    goForward(MAX_SPEED);
-    while (ping() > SLOW_DIST) {
-      delay(10);
-    }
-
-    //slow down, then move at min speed until it hits the wall
-    //    decelerate();
-    //    goForward(MIN_SPEED);
-
+    //go at max speed until it hits something?
     goForward(MAX_SPEED);
     //if it hits something, stop
     while (true) {
@@ -235,8 +218,8 @@ void f3_loop() {
       }
     }
 
-    //check which direction has the most space, then turn at an angle
-    //between 60 and 120 and move in that direction
+    //check which direction has the most space, then turn at a random
+    //angle between 60 and 120 and move in that direction
     if (sweep() == LEFT) {
       turn(random(MIN_ANGLE, MAX_ANGLE), LEFT);
     }
@@ -268,6 +251,64 @@ int functionStatus() {
   return function;
 }
 
+
+// --------------Rangefind helpers-----------------
+/**
+   Sweeps the rangefinder from 90 degrees to 0, to 180, then back to 90,
+   pinging the rangefinder at 0 and 180 degrees.
+
+   Returns: 1 if the longest distance read is on the left, 0 if the longest distance is on the right
+*/
+int sweep() {
+  myservo.write(180);
+  delay(500);
+  leftDist = ping();
+
+  myservo.write(0);
+  delay(500);
+  rightDist = ping();
+
+  myservo.write(90);
+  if (leftDist > rightDist)
+    return LEFT;
+  else
+    return RIGHT;
+}
+
+
+/**
+   Reads a value from the rangefinder.
+
+   returns: the distance away from the rangefinder, in cm
+*/
+float ping() {
+  //Finding the temperature in Celcius
+  temp = analogRead(TEMPERATURE) * (5000 / 10240);
+
+  //Finding the speed of sound
+  SpeedOfSound = 331.5 + (0.6 * temp);
+
+  //Calculate the conversion in order to determine the distance
+  float conversion = 1 / SpeedOfSound;
+  conversion = conversion * 1000000 / 100;
+
+  //Send a pulse to the trigger
+  digitalWrite(TRIGGER, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIGGER, LOW);
+
+  //Read from the trigger pin
+  pulse = pulseIn(ECHO, HIGH);
+
+  //Calculate the distance
+  distance = pulse / (2 * conversion);
+
+  return distance;
+}
+// --------------end rangefind helpers-----------------
+
+
+// ------------------Motor helpers---------------------
 /**
   Moves the robot in a left spiral until it runs into something
 */
@@ -301,91 +342,7 @@ void spiral() {
 }
 
 /**
-   Sweeps the rangefinder from 90 degrees to 0, to 180, then back to 90,
-   pinging the rangefinder at 0 and 180 degrees.
-
-   Returns: 1 if the longest distance read is on the left, 0 if the longest distance is on the right
-*/
-int sweep() {
-  myservo.write(180);
-  delay(500);
-  leftDist = ping();
-
-  myservo.write(0);
-  delay(500);
-  rightDist = ping();
-
-  //  Serial.print("distance to left: ");
-  //  Serial.println(leftDist);
-  //  Serial.print("distance to right: ");
-  //  Serial.println(rightDist);
-
-  myservo.write(90);
-  if (leftDist > rightDist)
-    return LEFT;
-  else
-    return RIGHT;
-}
-
-/**
-   Checks all directions within 90 degrees of the front of the robot -------DO WE NEED THIS??-------
-
-   param: direction - direction to sweep (left or right)
-   returns: distance - the greatest distance away from the bot over 90 degrees
-*/
-int checkDir(int direction) {
-  int degrees = 85;
-  int distance;
-  while (degrees > 0 && degrees < 180) {
-    myservo.write(degrees);
-    int distL = ping();
-    if (distL > distance)
-      distance = distL;
-    if (direction == LEFT)
-      degrees--;
-    else
-      degrees++;
-  }
-
-  return distance;
-}
-
-/**
-   Reads a value from the rangefinder.
-
-   Returns: the distance away from the rangefinder, in cm
-*/
-float ping() {
-  //Finding the temperature in Celcius
-  temp = analogRead(TEMPERATURE) * (5000 / 10240);
-
-  //Finding the speed of sound
-  SpeedOfSound = 331.5 + (0.6 * temp);
-  //Serial.println(SpeedOfSound);
-
-  //Calculate the conversion in order to determine the distance
-  float conversion = 1 / SpeedOfSound;
-  conversion = conversion * 1000000 / 100;
-  //Serial.println(conversion);
-
-  //Send a pulse to the trigger
-  digitalWrite(TRIGGER, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(TRIGGER, LOW);
-  //delayMicroseconds(10);
-
-  //Read from the trigger pin
-  pulse = pulseIn(ECHO, HIGH);
-  //Serial.println(pulse);
-
-  //Calculate the distance
-  distance = pulse / (2 * conversion);
-
-  return distance;
-}
-
-/*go forward at a given speed
-
+go forward at a given speed
   param: vel (0-255) to set velocity
 */
 void goForward(int vel) {
@@ -393,8 +350,8 @@ void goForward(int vel) {
   writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, vel);
 }
 
-/**Decelarate from cuurent speed to 0 in 2 seconds
-
+/**
+  Decelarate from cuurent speed to 0 in 2 seconds
 */
 void decelerate() {
   int m_speed = MAX_SPEED;
@@ -421,8 +378,24 @@ void stop() {
   digitalWrite(LEFT_MOTOR, FORWARDS);
 }
 
-// ==============================
-//     Tape following helpers
+
+void turn(int degrees, int direction) {
+  stop();
+  if (direction == RIGHT) {
+    writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, -SWIVEL_SPEED);
+    writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, SWIVEL_SPEED);
+  }
+  else {
+    writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, SWIVEL_SPEED);
+    writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, -SWIVEL_SPEED);
+  }
+  delay(degrees * TURN_CONST);
+  stop();
+}
+
+// -----------------end motor helpers-------------------
+
+// --------------Tape following helpers-----------------
 bool onTape(int reading) {
   return reading > TAPE_THRESH;
 }
@@ -445,71 +418,5 @@ void writeMotorSpeed(int motor, int motor_speed_pin, int vel) {
 int clamp(int val, int min_r, int max_r) {
   return val < max_r ? val > min_r ? val : min_r : max_r;
 }
-//   End Tape following helpers
-// ==============================
-
-/*
-   This function displays the left motor speed and the right motor speed onto the LCD display
-*/
-//void printSpeed() {
-//  int leftSpeed = 0; // this needs to be replaced
-//  int rightSpeed = 0; // this needs to be replaced
-//
-//  lcd.clear();
-//  lcd.home();
-//  lcd.print("Left speed: ");
-//  lcd.print(leftSpeed);
-//  lcd.setCursor(0, 1);
-//  lcd.print("Right speed: ");
-//  lcd.print(rightSpeed);
-//}
-
-void turn(int degrees, int direction) {
-  stop();
-  if (direction == RIGHT) {
-    writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, -SWIVEL_SPEED);
-    writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, SWIVEL_SPEED);
-  }
-  else {
-    writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, SWIVEL_SPEED);
-    writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, -SWIVEL_SPEED);
-  }
-  delay(degrees * TURN_CONST);
-  stop();
-}
-
-/*
-   Function which turns a specified number of degrees
-   in a specified direction. LEFT or RIGHT.
-   uses time and a constant speed for turning, only
-   accurate to ~10 degrees
-
-*/
-//void slowTurn(int degree, int direction) {
-//
-//  stop();
-//  int slowSpeed = 100;
-//
-//  long timeNeeded = degree * 9.8; // calibrate later
-//
-//  if (direction == LEFT) {
-//    digitalWrite(MOTOR_A, BACKWARDS);
-//    analogWrite(SPEED_A, slowSpeed);
-//    digitalWrite(MOTOR_B, FORWARDS);
-//    analogWrite(SPEED_B, slowSpeed);
-//    delay(timeNeeded);
-//  }
-//
-//  else {
-//
-//    digitalWrite(MOTOR_A, FORWARDS);
-//    analogWrite(SPEED_A, slowSpeed);
-//    digitalWrite(MOTOR_B, BACKWARDS);
-//    analogWrite(SPEED_B, slowSpeed);
-//    delay(timeNeeded);
-//  }
-//
-//  stop();
-//
-//}
+// ------------end tape following helpers---------------
 
