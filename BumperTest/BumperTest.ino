@@ -6,31 +6,31 @@
 #define RIGHT_SPEED_PIN 6     //right motor speed setting pin
 #define BUMPER 13
 
-void setup(){
-pinMode(RIGHT_SPEED_PIN, OUTPUT);
+void setup() {
+  pinMode(RIGHT_SPEED_PIN, OUTPUT);
   pinMode(LEFT_SPEED_PIN, OUTPUT);
   pinMode(LEFT_MOTOR, OUTPUT);
   pinMode(RIGHT_MOTOR, OUTPUT);
-  pinMode(BUMPER, INPUT_PULLUP);  
+  pinMode(BUMPER, INPUT_PULLUP);
 }
 
-void loop(){
-  while(digitalRead(BUMPER) == HIGH){
-  int speed =255;
-  digitalWrite(LEFT_MOTOR, FORWARDS);
-  analogWrite(LEFT_SPEED_PIN, speed);
-  digitalWrite(RIGHT_MOTOR, FORWARDS);
-  analogWrite(RIGHT_SPEED_PIN, speed);
+void loop()   {
+  if (digitalRead(BUMPER) == LOW) {
+    delay(50);
+    if (digitalRead(BUMPER) == LOW) {
+    digitalWrite(LEFT_SPEED_PIN, 0);
+      digitalWrite(RIGHT_SPEED_PIN, 0);
+      delay(500);
+      digitalWrite(LEFT_MOTOR, BACKWARDS);
+      digitalWrite(RIGHT_MOTOR, BACKWARDS);
+      digitalWrite(LEFT_SPEED_PIN, 150);
+      digitalWrite(RIGHT_SPEED_PIN, 150);
+      delay(500);
+    }
+  } else {
+    digitalWrite(LEFT_MOTOR, FORWARDS);
+    digitalWrite(RIGHT_MOTOR, FORWARDS);
+    digitalWrite(LEFT_SPEED_PIN, 200);
+    digitalWrite(RIGHT_SPEED_PIN, 200);
   }
-  
-  digitalWrite(LEFT_SPEED_PIN, 0);
-  digitalWrite(RIGHT_SPEED_PIN, 0);
-  delay(1000);
-  speed = 150;
-  digitalWrite(LEFT_MOTOR, BACKWARDS);
-  digitalWrite(RIGHT_MOTOR, BACKWARDS);
-  digitalWrite(RIGHT_SPEED_PIN, speed);
-  digitalWrite(LEFT_sPEED_PIN, speed);
-  delay(250);
-  
 }
