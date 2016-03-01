@@ -219,17 +219,21 @@ void f3_loop() {
       delay(10);
     }
 
-    //    else if (distCount < 5) {
-    //      distCount++;
-    //    }
-
     //slow down, then move at min speed until it hits the wall
-    decelerate();
-    goForward(MIN_SPEED);
-    while (digitalRead(BUMPER) == LOW) {
-      delay(10);
+    //    decelerate();
+    //    goForward(MIN_SPEED);
+
+    goForward(MAX_SPEED);
+    //if it hits something, stop
+    while (true) {
+      if (digitalRead(BUMPER) == LOW) {
+        delay(10);
+        if (digitalRead(BUMPER) == LOW) {
+          stop();
+          break;
+        }
+      }
     }
-    stop();
 
     //check which direction has the most space, then turn at an angle
     //between 60 and 120 and move in that direction
@@ -239,8 +243,6 @@ void f3_loop() {
     else {
       turn(random(MIN_ANGLE, MAX_ANGLE), RIGHT);
     }
-    //      distCount = 0;
-
     spiralCount++;
   }
 }
@@ -275,13 +277,26 @@ void spiral() {
   int lowSpeed = MIN_SPEED;
 
   //set the outside motor speed
-  writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, -highSpeed);
+  writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, highSpeed);
 
   //gradually increase speed of inside motor
-  while (digitalRead(BUMPER) == HIGH) {
-    writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, lowSpeed);
-    delay(500);
-    lowSpeed += 1;
+  distCount = 500; //check that it isn't used somewhere else
+  while (true) {
+    delay(10);
+    distCount += 10;
+    if (distCount == 500) {
+      lowSpeed += 1;
+      writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, lowSpeed);
+      distCount = 0;
+    }
+
+    //debouncing for switch
+    if (digitalRead(BUMPER) == LOW) {
+      delay(10);
+      if (digitalRead(BUMPER) == LOW) {
+        break;
+      }
+    }
   }
 }
 
