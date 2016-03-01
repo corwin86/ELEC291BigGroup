@@ -66,7 +66,7 @@ int TAPE_THRESH = 600;
 /***end tapefollow variables***/
 
 /***roomba (f3) variables***/
-int spiralCount = 0;
+int spiralCount = 5;
 /***end roomba variables***/
 
 // == END VARIABLES ==
@@ -108,7 +108,7 @@ void setup() {
 void loop() {
   //updates the current function status, loops until valid function
   functionStatus();
-//  Serial.println(function);
+  //  Serial.println(function);
 
   if (function == 1)
     f1_loop();
@@ -128,8 +128,8 @@ void f1_loop() {
 
   while (functionStatus() == 1) {
     sensorDist = ping();
-//    Serial.print("distance from sensor:");
-//    Serial.println(sensorDist);
+    //    Serial.print("distance from sensor:");
+    //    Serial.println(sensorDist);
 
     if (sensorDist > SLOW_DIST) {
       goForward(MAX_SPEED);
@@ -157,7 +157,7 @@ void f1_loop() {
 */
 void f2_loop() {
   while (functionStatus() == 2) {
-//    Serial.println("in function 2");
+    //    Serial.println("in function 2");
     // read values from IR sensors
     int left  = analogRead(TAPE_LEFT);
     int right = analogRead(TAPE_RIGHT);
@@ -207,6 +207,8 @@ void f3_loop() {
 
     //every 5 moves, do a spiral
     if (spiralCount >= 5) {
+      goForward(MAX_SPEED);
+      delay(ping() * 50);
       spiral();
       spiralCount = 0;
     }
@@ -220,25 +222,25 @@ void f3_loop() {
     //    else if (distCount < 5) {
     //      distCount++;
     //    }
-    else {
-      //slow down, then move at min speed until it hits the wall
-      decelerate();
-      goForward(MIN_SPEED);
-      while (!digitalRead(BUMPER) {
-      delay(10);
-      }
-      stop();
 
-      //check which direction has the most space, then turn at an angle
-      //between 60 and 120 and move in that direction
-      if (sweep() == LEFT) {
-      turn(random(MIN_ANGLE, MAX_ANGLE), LEFT);
-      }
-      else {
-        turn(random(MIN_ANGLE, MAX_ANGLE), RIGHT);
-      }
-      //      distCount = 0;
+    //slow down, then move at min speed until it hits the wall
+    decelerate();
+    goForward(MIN_SPEED);
+    while (digitalRead(BUMPER) == LOW) {
+      delay(10);
     }
+    stop();
+
+    //check which direction has the most space, then turn at an angle
+    //between 60 and 120 and move in that direction
+    if (sweep() == LEFT) {
+      turn(random(MIN_ANGLE, MAX_ANGLE), LEFT);
+    }
+    else {
+      turn(random(MIN_ANGLE, MAX_ANGLE), RIGHT);
+    }
+    //      distCount = 0;
+
     spiralCount++;
   }
 }
@@ -275,7 +277,7 @@ void spiral() {
   //set the outside motor speed
   writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, -highSpeed);
 
-//gradually increase speed of inside motor
+  //gradually increase speed of inside motor
   while (digitalRead(BUMPER) == HIGH) {
     writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, lowSpeed);
     delay(500);
