@@ -1,17 +1,21 @@
 #include <Servo.h>
 #include <LiquidCrystal.h>;
 
-//control pins !!!!!!add motor here!!!!!!------------------------------------------------------------------
-#define FORWARDS        LOW  //motor direction forward
-#define BACKWARDS       HIGH //motor direction backward
-#define LEFT_MOTOR      4    //left motor pin
-#define RIGHT_MOTOR     7    //right motor pin
-#define LEFT_SPEED_PIN  5    //left motor speed setting pin
-#define RIGHT_SPEED_PIN 6    //right motor speed setting pin
-#define SWITCH1         9    //function switches
-#define SWITCH2         8    //(s1 ^ !s2) = f1, (!s1 ^ s2) = f2, (s1 ^ s2) - f3, (!s2 ^ !s2) = off
+//control pins
+#define FORWARDS        LOW   //motor direction forward
+#define BACKWARDS       HIGH  //motor direction backward
+#define LEFT_MOTOR      4     //left motor pin
+#define RIGHT_MOTOR     7     //right motor pin
+#define LEFT_SPEED_PIN  5     //left motor speed setting pin
+#define RIGHT_SPEED_PIN 6     //right motor speed setting pin
+#define SWITCH1         9     //function switches
+#define SWITCH2         8     //(s1 ^ !s2) = f1, (!s1 ^ s2) = f2, (s1 ^ s2) - f3, (!s2 ^ !s2) = off
 
-#define LEFT 1
+//control defines
+#define TURN_CONST      9.8   //experimentally derived, consistent up to ~180 degrees
+#define MAX_SPEED       255
+#define SWIVEL_SPEED    100
+#define LEFT  1
 #define RIGHT 0
 
 //Hall effect pins
@@ -19,7 +23,7 @@
 #define HALL_EFFECT_RIGHT 2
 #define HALL_HIGH 600
 
-//f1 pins
+//f1 defines
 #define SERVO 10
 #define TRIGGER 11
 #define ECHO 12
@@ -28,14 +32,14 @@
 #define SLOW_DIST 60
 #define STOP_DIST 4
 
-//f2 pins
+//f2 defines
 #define TAPE_LEFT 0
 #define TAPE_RIGHT 1
 
-//f3 pins
-#define CRASH_SWITCH 13 //check which pin this uses
-
-#define MAX_SPEED 255
+//f3 defines
+#define CRASH_SWITCH 13
+#define MIN_ANGLE 60
+#define MAX_ANGLE 120
 
 // ==== VARIABLES ====
 
@@ -136,12 +140,12 @@ void f1_loop() {
     }
     else {
       decelerate();
-      delay(500);
-      if (sweep() == RIGHT) {
-        turn90degrees(LEFT);
+      delay(250);
+      if (sweep() == LEFT) {
+        turn(90, LEFT);
       }
       else {
-        turn90degrees(RIGHT);
+        turn(90, RIGHT);
       }
       distCount = 0;
     }
@@ -196,21 +200,24 @@ void f2_loop() {
 
 /**
    Loop for our third function
-   IT'S A MYSTERY...
+   IT'S A ROOMBA...
 */
 void f3_loop() {
   Serial.println("in function 3");
+  spiral();
   while (functionStatus() == 3) {
-    spiral();
-
-    if (sweep() == LEFT)
-      turn90degrees(LEFT);
-    else
-      turn90degrees(RIGHT);
+  
+    if (sweep() == LEFT){
+      turn(random(MIN_ANGLE, MAX_ANGLE), LEFT);
+    }
+    else {
+      turn(random(MIN_ANGLE, MAX_ANGLE), RIGHT);
+    }
+    
     goForward(MAX_SPEED);
     delay((int)ping() * 50);
+    
     stop();
-    // wallFollow();
 
   }
 }
@@ -261,12 +268,12 @@ void spiral() {
    Returns: 1 if the longest distance read is on the left, 0 if the longest distance is on the right
 */
 int sweep() {
-  myservo.write(0);
-  delay(1000);
+  myservo.write(180);
+  delay(500);
   leftDist = ping();
 
-  myservo.write(180);
-  delay(1000);
+  myservo.write(0);
+  delay(500);
   rightDist = ping();
 
   Serial.print("distance to left: ");
@@ -288,22 +295,22 @@ int sweep() {
    param: direction - direction to sweep (left or right)
    returns: distance - the greatest distance away from the bot over 90 degrees
 */
-//int checkDir(int direction){
-//  int degrees = 85;
-//  int distance;
-//  while(degrees > 0 && degrees < 180){
-//    myservo.write(degrees);
-//    int distL = ping();
-//    if (distL > distance)
-//      distance = distL;
-//    if (direction == LEFT)
-//      degrees--;
-//    else
-//      degrees++;
-//  }
-//
-//  return distance;
-//}
+int checkDir(int direction){
+  int degrees = 85;
+  int distance;
+  while(degrees > 0 && degrees < 180){
+    myservo.write(degrees);
+    int distL = ping();
+    if (distL > distance)
+      distance = distL;
+    if (direction == LEFT)
+      degrees--;
+    else
+      degrees++;
+  }
+
+  return distance;
+}
 
 /**
    Reads a value from the rangefinder.
@@ -422,21 +429,21 @@ int clamp(int val, int min_r, int max_r) {
 //  lcd.print(rightSpeed);
 //}
 
-void turn90degrees(int direction) {
+void turn(int degrees, int direction) {
   stop();
-  if (direction == 0) {
-    analogWrite(RIGHT_SPEED_PIN, 100);
-    digitalWrite(RIGHT_MOTOR, HIGH);
-    analogWrite(LEFT_SPEED_PIN, 100);
-    digitalWrite(LEFT_MOTOR, LOW);
+  if (direction == RIGHT) {
+    analogWrite(RIGHT_SPEED_PIN, SWIVEL_SPEED);
+    digitalWrite(RIGHT_MOTOR, BACKWARDS);
+    analogWrite(LEFT_SPEED_PIN, SWIVEL_SPEED);
+    digitalWrite(LEFT_MOTOR, FORWARDS);
   }
   else {
-    analogWrite(RIGHT_SPEED_PIN, 100);
-    digitalWrite(RIGHT_MOTOR, LOW);
-    analogWrite(LEFT_SPEED_PIN, 100);
-    digitalWrite(LEFT_MOTOR, HIGH);
+    analogWrite(RIGHT_SPEED_PIN, SWIVEL_SPEED);
+    digitalWrite(RIGHT_MOTOR, FORWARDS);
+    analogWrite(LEFT_SPEED_PIN, SWIVEL_SPEED);
+    digitalWrite(LEFT_MOTOR, BACKWARDS);
   }
-  delay(90 * 9.8);
+  delay(degrees * TURN_CONST);
   stop();
 }
 
