@@ -14,6 +14,7 @@
 //control defines
 #define TURN_CONST      9.8   //experimentally derived, consistent up to ~180 degrees
 #define MAX_SPEED       255
+#define MIN_SPEED       60    //experimentally derived, min speed so that motor won't stall
 #define SWIVEL_SPEED    100
 #define LEFT  1
 #define RIGHT 0
@@ -30,14 +31,14 @@
 #define TEMPERATURE 3
 
 #define SLOW_DIST 60
-#define STOP_DIST 4
+#define STOP_DIST 5
 
 //f2 defines
 #define TAPE_LEFT 0
 #define TAPE_RIGHT 1
 
 //f3 defines
-#define CRASH_SWITCH 13
+#define BUMPER 13
 #define MIN_ANGLE 60
 #define MAX_ANGLE 120
 
@@ -53,10 +54,9 @@ Servo myservo;  // create servo object to control a servo
 float temp, pulse, distance, SpeedOfSound,
       rightDist, leftDist, sensorDist;
 int   distCount = 0;
-/***end servo variables***/
+/***end collision variables***/
 
 /***tapefollow (f2) variables***/
-
 int kp = 80,
     kd = 0,
     vel = 175;
@@ -66,7 +66,7 @@ int TAPE_THRESH = 600;
 /***end tapefollow variables***/
 
 /***roomba (f3) variables***/
-
+int spiralCount = 0;
 /***end roomba variables***/
 
 // == END VARIABLES ==
@@ -78,7 +78,6 @@ void setup() {
   myservo.attach(SERVO);
   myservo.write(90);
 
-  pinMode(CRASH_SWITCH, INPUT);
   pinMode(SWITCH1, INPUT_PULLUP);
   pinMode(SWITCH2, INPUT_PULLUP);
 
@@ -91,7 +90,7 @@ void setup() {
   pinMode(TEMPERATURE, INPUT);
 
   //crash switch pinmode
-  pinMode(CRASH_SWITCH, INPUT_PULLUP);
+  pinMode(BUMPER, INPUT_PULLUP);
 
   //set up motor pins and hall effect pins
   pinMode(RIGHT_SPEED_PIN, OUTPUT);
@@ -109,7 +108,7 @@ void setup() {
 void loop() {
   //updates the current function status, loops until valid function
   functionStatus();
-  Serial.println(function);
+//  Serial.println(function);
 
   if (function == 1)
     f1_loop();
@@ -129,15 +128,15 @@ void f1_loop() {
 
   while (functionStatus() == 1) {
     sensorDist = ping();
-    Serial.print("distance from sensor:");
-    Serial.println(sensorDist);
+//    Serial.print("distance from sensor:");
+//    Serial.println(sensorDist);
 
     if (sensorDist > SLOW_DIST) {
       goForward(MAX_SPEED);
     }
-    else if (distCount < 5) {
-      distCount++;
-    }
+    //    else if (distCount < 5) {
+    //      distCount++;
+    //    }
     else {
       decelerate();
       delay(250);
@@ -147,7 +146,7 @@ void f1_loop() {
       else {
         turn(90, RIGHT);
       }
-      distCount = 0;
+      //      distCount = 0;
     }
   }
 }
@@ -158,7 +157,7 @@ void f1_loop() {
 */
 void f2_loop() {
   while (functionStatus() == 2) {
-    Serial.println("in function 2");
+//    Serial.println("in function 2");
     // read values from IR sensors
     int left  = analogRead(TAPE_LEFT);
     int right = analogRead(TAPE_RIGHT);
@@ -203,22 +202,44 @@ void f2_loop() {
    IT'S A ROOMBA...
 */
 void f3_loop() {
-  Serial.println("in function 3");
-  spiral();
+  //Serial.println("in function 3");
   while (functionStatus() == 3) {
-  
-    if (sweep() == LEFT){
-      turn(random(MIN_ANGLE, MAX_ANGLE), LEFT);
-    }
-    else {
-      turn(random(MIN_ANGLE, MAX_ANGLE), RIGHT);
-    }
-    
-    goForward(MAX_SPEED);
-    delay((int)ping() * 50);
-    
-    stop();
 
+    //every 5 moves, do a spiral
+    if (spiralCount >= 5) {
+      spiral();
+      spiralCount = 0;
+    }
+
+    //then, bounce off walls for 5 moves
+    goForward(MAX_SPEED);
+    while (ping() > SLOW_DIST) {
+      delay(10);
+    }
+
+    //    else if (distCount < 5) {
+    //      distCount++;
+    //    }
+    else {
+      //slow down, then move at min speed until it hits the wall
+      decelerate();
+      goForward(MIN_SPEED);
+      while (!digitalRead(BUMPER) {
+      delay(10);
+      }
+      stop();
+
+      //check which direction has the most space, then turn at an angle
+      //between 60 and 120 and move in that direction
+      if (sweep() == LEFT) {
+      turn(random(MIN_ANGLE, MAX_ANGLE), LEFT);
+      }
+      else {
+        turn(random(MIN_ANGLE, MAX_ANGLE), RIGHT);
+      }
+      //      distCount = 0;
+    }
+    spiralCount++;
   }
 }
 
@@ -249,13 +270,14 @@ int functionStatus() {
 void spiral() {
   stop();
   int highSpeed = 220;
-  int lowSpeed = 60;
+  int lowSpeed = MIN_SPEED;
 
-  analogWrite(LEFT_SPEED_PIN, highSpeed);
-  digitalWrite(LEFT_MOTOR, HIGH);
-  while (digitalRead(CRASH_SWITCH) == HIGH) {
-    analogWrite(RIGHT_SPEED_PIN, lowSpeed);
-    digitalWrite(RIGHT_MOTOR, HIGH);
+  //set the outside motor speed
+  writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, -highSpeed);
+
+//gradually increase speed of inside motor
+  while (digitalRead(BUMPER) == HIGH) {
+    writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, lowSpeed);
     delay(500);
     lowSpeed += 1;
   }
@@ -276,11 +298,10 @@ int sweep() {
   delay(500);
   rightDist = ping();
 
-  Serial.print("distance to left: ");
-  Serial.println(leftDist);
-  Serial.print("distance to right: ");
-  Serial.println(rightDist);
-
+  //  Serial.print("distance to left: ");
+  //  Serial.println(leftDist);
+  //  Serial.print("distance to right: ");
+  //  Serial.println(rightDist);
 
   myservo.write(90);
   if (leftDist > rightDist)
@@ -295,10 +316,10 @@ int sweep() {
    param: direction - direction to sweep (left or right)
    returns: distance - the greatest distance away from the bot over 90 degrees
 */
-int checkDir(int direction){
+int checkDir(int direction) {
   int degrees = 85;
   int distance;
-  while(degrees > 0 && degrees < 180){
+  while (degrees > 0 && degrees < 180) {
     myservo.write(degrees);
     int distL = ping();
     if (distL > distance)
@@ -348,35 +369,25 @@ float ping() {
 
 /*go forward at a given speed
 
-  param: speed (0-255) to set
+  param: vel (0-255) to set velocity
 */
-void goForward(int speed) {
-  digitalWrite(LEFT_MOTOR, FORWARDS);
-  analogWrite(LEFT_SPEED_PIN, speed);
-  digitalWrite(RIGHT_MOTOR, FORWARDS);
-  analogWrite(RIGHT_SPEED_PIN, speed);
+void goForward(int vel) {
+  writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, vel);
+  writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, vel);
 }
 
 /**Decelarate from cuurent speed to 0 in 2 seconds
 
 */
 void decelerate() {
-  //  int steps = speed / 10;
-  //  for(int i = 0; i < 10; i++){
-  //    analogWrite(RIGHT_SPEED_PIN, speed - steps * i);
-  //    analogWrite(LEFT_SPEED_PIN, speed - steps * i);
-  //    delay(200);
-  //  }
-  //  analogWrite(RIGHT_SPEED_PIN, 0);
-  //  analogWrite(LEFT_SPEED_PIN, 0);
   int m_speed = MAX_SPEED;
   int p = STOP_DIST + 1;
-  while(p > STOP_DIST) {
+  while (p > STOP_DIST) {
     p = ping();
     int c = MAX_SPEED * (SLOW_DIST - p) / SLOW_DIST - 50;
 
     m_speed = MAX_SPEED - c;
-  
+
     writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, m_speed);
     writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, m_speed);
   }
@@ -388,9 +399,9 @@ void decelerate() {
 */
 void stop() {
   analogWrite(RIGHT_SPEED_PIN, 0);
-  digitalWrite(RIGHT_MOTOR, LOW);
+  digitalWrite(RIGHT_MOTOR, FORWARDS);
   analogWrite(LEFT_SPEED_PIN, 0);
-  digitalWrite(LEFT_MOTOR, LOW);
+  digitalWrite(LEFT_MOTOR, FORWARDS);
 }
 
 // ==============================
@@ -399,6 +410,13 @@ bool onTape(int reading) {
   return reading > TAPE_THRESH;
 }
 
+/**
+   Writes a speed to a motor
+
+   param motor - the motor to write to
+   param motor_speed_pin - the speed pin to write to
+   param vel - the speed to write to the motor
+*/
 void writeMotorSpeed(int motor, int motor_speed_pin, int vel) {
   digitalWrite(motor, vel < 0 ? BACKWARDS : FORWARDS);
   analogWrite(motor_speed_pin, vel);
@@ -432,18 +450,49 @@ int clamp(int val, int min_r, int max_r) {
 void turn(int degrees, int direction) {
   stop();
   if (direction == RIGHT) {
-    analogWrite(RIGHT_SPEED_PIN, SWIVEL_SPEED);
-    digitalWrite(RIGHT_MOTOR, BACKWARDS);
-    analogWrite(LEFT_SPEED_PIN, SWIVEL_SPEED);
-    digitalWrite(LEFT_MOTOR, FORWARDS);
+    writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, -SWIVEL_SPEED);
+    writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, SWIVEL_SPEED);
   }
   else {
-    analogWrite(RIGHT_SPEED_PIN, SWIVEL_SPEED);
-    digitalWrite(RIGHT_MOTOR, FORWARDS);
-    analogWrite(LEFT_SPEED_PIN, SWIVEL_SPEED);
-    digitalWrite(LEFT_MOTOR, BACKWARDS);
+    writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, SWIVEL_SPEED);
+    writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, -SWIVEL_SPEED);
   }
   delay(degrees * TURN_CONST);
   stop();
 }
+
+/*
+   Function which turns a specified number of degrees
+   in a specified direction. LEFT or RIGHT.
+   uses time and a constant speed for turning, only
+   accurate to ~10 degrees
+
+*/
+//void slowTurn(int degree, int direction) {
+//
+//  stop();
+//  int slowSpeed = 100;
+//
+//  long timeNeeded = degree * 9.8; // calibrate later
+//
+//  if (direction == LEFT) {
+//    digitalWrite(MOTOR_A, BACKWARDS);
+//    analogWrite(SPEED_A, slowSpeed);
+//    digitalWrite(MOTOR_B, FORWARDS);
+//    analogWrite(SPEED_B, slowSpeed);
+//    delay(timeNeeded);
+//  }
+//
+//  else {
+//
+//    digitalWrite(MOTOR_A, FORWARDS);
+//    analogWrite(SPEED_A, slowSpeed);
+//    digitalWrite(MOTOR_B, BACKWARDS);
+//    analogWrite(SPEED_B, slowSpeed);
+//    delay(timeNeeded);
+//  }
+//
+//  stop();
+//
+//}
 
