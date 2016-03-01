@@ -14,6 +14,7 @@
 //control defines
 #define TURN_CONST      9.8   //experimentally derived, consistent up to ~180 degrees
 #define MAX_SPEED       255
+#define MIN_SPEED       60    //experimentally derived, min speed so that motor won't stall
 #define SWIVEL_SPEED    100
 #define LEFT  1
 #define RIGHT 0
@@ -30,14 +31,14 @@
 #define TEMPERATURE 3
 
 #define SLOW_DIST 60
-#define STOP_DIST 4
+#define STOP_DIST 5
 
 //f2 defines
 #define TAPE_LEFT 0
 #define TAPE_RIGHT 1
 
 //f3 defines
-#define CRASH_SWITCH 13
+#define BUMPER 13
 #define MIN_ANGLE 60
 #define MAX_ANGLE 120
 
@@ -53,10 +54,9 @@ Servo myservo;  // create servo object to control a servo
 float temp, pulse, distance, SpeedOfSound,
       rightDist, leftDist, sensorDist;
 int   distCount = 0;
-/***end servo variables***/
+/***end collision variables***/
 
 /***tapefollow (f2) variables***/
-
 int kp = 80,
     kd = 0,
     vel = 175;
@@ -66,7 +66,7 @@ int TAPE_THRESH = 600;
 /***end tapefollow variables***/
 
 /***roomba (f3) variables***/
-
+int spiralCount = 0;
 /***end roomba variables***/
 
 // == END VARIABLES ==
@@ -78,7 +78,6 @@ void setup() {
   myservo.attach(SERVO);
   myservo.write(90);
 
-  pinMode(CRASH_SWITCH, INPUT);
   pinMode(SWITCH1, INPUT_PULLUP);
   pinMode(SWITCH2, INPUT_PULLUP);
 
@@ -91,7 +90,7 @@ void setup() {
   pinMode(TEMPERATURE, INPUT);
 
   //crash switch pinmode
-  pinMode(CRASH_SWITCH, INPUT_PULLUP);
+  pinMode(BUMPER, INPUT_PULLUP);
 
   //set up motor pins and hall effect pins
   pinMode(RIGHT_SPEED_PIN, OUTPUT);
@@ -135,9 +134,9 @@ void f1_loop() {
     if (sensorDist > SLOW_DIST) {
       goForward(MAX_SPEED);
     }
-    else if (distCount < 5) {
-      distCount++;
-    }
+    //    else if (distCount < 5) {
+    //      distCount++;
+    //    }
     else {
       decelerate();
       delay(250);
@@ -147,7 +146,7 @@ void f1_loop() {
       else {
         turn(90, RIGHT);
       }
-      distCount = 0;
+      //      distCount = 0;
     }
   }
 }
@@ -203,22 +202,44 @@ void f2_loop() {
    IT'S A ROOMBA...
 */
 void f3_loop() {
-  Serial.println("in function 3");
-  spiral();
+  //Serial.println("in function 3");
   while (functionStatus() == 3) {
-  
-    if (sweep() == LEFT){
-      turn(random(MIN_ANGLE, MAX_ANGLE), LEFT);
-    }
-    else {
-      turn(random(MIN_ANGLE, MAX_ANGLE), RIGHT);
-    }
-    
-    goForward(MAX_SPEED);
-    delay((int)ping() * 50);
-    
-    stop();
 
+    //every 5 moves, do a spiral
+    if (spiralCount >= 5) {
+      spiral();
+      spiralCount = 0;
+    }
+
+    //then, bounce off walls for 5 moves
+    goForward(MAX_SPEED);
+    while (ping() > SLOW_DIST) {
+      delay(10);
+    }
+    
+    //    else if (distCount < 5) {
+    //      distCount++;
+    //    }
+    else {
+      //slow down, then move at min speed until it hits the wall
+      decelerate();
+      goForward(MIN_SPEED);
+      while(!digitalRead(BUMPER){
+        delay(10);
+      }
+      stop();
+
+      //check which direction has the most space, then turn at an angle
+      //between 60 and 120 and move in that direction
+      if (sweep() == LEFT) {
+        turn(random(MIN_ANGLE, MAX_ANGLE), LEFT);
+      }
+      else {
+        turn(random(MIN_ANGLE, MAX_ANGLE), RIGHT);
+      }
+      //      distCount = 0;
+    }
+    spiralCount++;
   }
 }
 
@@ -249,11 +270,11 @@ int functionStatus() {
 void spiral() {
   stop();
   int highSpeed = 220;
-  int lowSpeed = 60;
+  int lowSpeed = MIN_SPEED;
 
   analogWrite(LEFT_SPEED_PIN, highSpeed);
   digitalWrite(LEFT_MOTOR, HIGH);
-  while (digitalRead(CRASH_SWITCH) == HIGH) {
+  while (digitalRead(BUMPER) == HIGH) {
     analogWrite(RIGHT_SPEED_PIN, lowSpeed);
     digitalWrite(RIGHT_MOTOR, HIGH);
     delay(500);
@@ -295,10 +316,10 @@ int sweep() {
    param: direction - direction to sweep (left or right)
    returns: distance - the greatest distance away from the bot over 90 degrees
 */
-int checkDir(int direction){
+int checkDir(int direction) {
   int degrees = 85;
   int distance;
-  while(degrees > 0 && degrees < 180){
+  while (degrees > 0 && degrees < 180) {
     myservo.write(degrees);
     int distL = ping();
     if (distL > distance)
@@ -371,12 +392,12 @@ void decelerate() {
   //  analogWrite(LEFT_SPEED_PIN, 0);
   int m_speed = MAX_SPEED;
   int p = STOP_DIST + 1;
-  while(p > STOP_DIST) {
+  while (p > STOP_DIST) {
     p = ping();
     int c = MAX_SPEED * (SLOW_DIST - p) / SLOW_DIST - 50;
 
     m_speed = MAX_SPEED - c;
-  
+
     writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, m_speed);
     writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, m_speed);
   }
