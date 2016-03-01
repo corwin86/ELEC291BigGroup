@@ -245,10 +245,10 @@ void spiral() {
   int lowSpeed = 60;
 
   analogWrite(LEFT_SPEED_PIN, highSpeed);
-  digitalWrite(LEFT_MOTOR, HIGH);
-  while (digitalRead(CRASH_SWITCH) == HIGH) {
+  digitalWrite(LEFT_MOTOR, BACKWARDS);
+  while (digitalRead(CRASH_SWITCH) == BACKWARDS) {
     analogWrite(RIGHT_SPEED_PIN, lowSpeed);
-    digitalWrite(RIGHT_MOTOR, HIGH);
+    digitalWrite(RIGHT_MOTOR, FORWARDS);
     delay(500);
     lowSpeed += 1;
   }
@@ -381,9 +381,9 @@ void decelerate() {
 */
 void stop() {
   analogWrite(RIGHT_SPEED_PIN, 0);
-  digitalWrite(RIGHT_MOTOR, LOW);
+  digitalWrite(RIGHT_MOTOR, FORWARDS);
   analogWrite(LEFT_SPEED_PIN, 0);
-  digitalWrite(LEFT_MOTOR, LOW);
+  digitalWrite(LEFT_MOTOR, FORWARDS);
 }
 
 // ==============================
@@ -424,19 +424,54 @@ int clamp(int val, int min_r, int max_r) {
 
 void turn90degrees(int direction) {
   stop();
-  if (direction == 0) {
+  if (direction == RIGHT) {
     analogWrite(RIGHT_SPEED_PIN, 100);
-    digitalWrite(RIGHT_MOTOR, HIGH);
+    digitalWrite(RIGHT_MOTOR, BACKWARDS);
     analogWrite(LEFT_SPEED_PIN, 100);
-    digitalWrite(LEFT_MOTOR, LOW);
+    digitalWrite(LEFT_MOTOR, FORWARDS);
   }
   else {
     analogWrite(RIGHT_SPEED_PIN, 100);
-    digitalWrite(RIGHT_MOTOR, LOW);
+    digitalWrite(RIGHT_MOTOR, FORWARDS);
     analogWrite(LEFT_SPEED_PIN, 100);
-    digitalWrite(LEFT_MOTOR, HIGH);
+    digitalWrite(LEFT_MOTOR, BACKWARDS);
   }
   delay(90 * 9.8);
   stop();
+}
+
+/*
+ * Function which turns a specified number of degrees 
+ * in a specified direction. LEFT or RIGHT.
+ * uses time and a constant speed for turning, only 
+ * accurate to ~10 degrees
+ * 
+ */
+void slowTurn(int degree, int direction){
+   
+    stop();
+    int slowSpeed = 100;
+
+    long timeNeeded = degree * 9.8; // calibrate later
+    
+    if(direction == LEFT){     
+         digitalWrite(MOTOR_A, BACKWARDS);
+         analogWrite(SPEED_A, slowSpeed);
+         digitalWrite(MOTOR_B, FORWARDS);
+         analogWrite(SPEED_B, slowSpeed);  
+         delay(timeNeeded);              
+    }
+    
+    else {
+      
+         digitalWrite(MOTOR_A, FORWARDS);
+         analogWrite(SPEED_A, slowSpeed);
+         digitalWrite(MOTOR_B, BACKWARDS);
+         analogWrite(SPEED_B, slowSpeed);  
+         delay(timeNeeded);      
+    }
+    
+    stop();  
+    
 }
 
