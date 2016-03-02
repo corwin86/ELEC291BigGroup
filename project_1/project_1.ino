@@ -220,6 +220,12 @@ void f3_loop() {
 
     //check which direction has the most space, then turn at a random
     //angle between 60 and 120 and move in that direction
+    digitalWrite(LEFT_MOTOR, BACKWARDS);
+    digitalWrite(RIGHT_MOTOR, BACKWARDS);
+    digitalWrite(LEFT_SPEED_PIN, 100);
+    digitalWrite(RIGHT_SPEED_PIN, 100);
+    delay(500);
+    
     if (sweep() == LEFT) {
       turn(random(MIN_ANGLE, MAX_ANGLE), LEFT);
     }
@@ -227,6 +233,7 @@ void f3_loop() {
       turn(random(MIN_ANGLE, MAX_ANGLE), RIGHT);
     }
     spiralCount++;
+    goForward(MAX_SPEED);
   }
 }
 
