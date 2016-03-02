@@ -12,7 +12,7 @@
 #define SWITCH2         8     //(s1^!s2)=>f1, (!s1^s2)=>f2, (s1^s2)=>f3, (!s2^!s2)=>off
 
 //control defines
-#define TURN_CONST      9.8   //experimentally derived, consistent up to ~180 degrees
+#define TURN_CONST      11   //experimentally derived, consistent up to ~180 degrees
 #define MAX_SPEED       255
 #define MIN_SPEED       80    //experimentally derived, min speed so that motor won't stall
 #define SWIVEL_SPEED    100
@@ -32,8 +32,8 @@
 #define ECHO 12
 #define TEMPERATURE 3
 //f1 defines
-#define SLOW_DIST 60
-#define STOP_DIST 5
+#define SLOW_DIST 40
+#define STOP_DIST 10
 
 //f2 pins
 #define TAPE_LEFT 0
@@ -67,7 +67,6 @@ int TAPE_THRESH = 600;
 /***end tapefollow variables***/
 
 /***roomba (f3) variables***/
-int spiralCount = 5;
 int distCount = 0;
 /***end roomba variables***/
 
@@ -100,7 +99,7 @@ void setup() {
   //set up hall effect pin
   pinMode(HALL_EFFECT_LEFT, INPUT);
   pinMode(HALL_EFFECT_RIGHT, INPUT);
-
+  delay(1500);
 }
 
 //determines which function loop to run
@@ -124,7 +123,7 @@ void loop() {
 */
 void f1_loop() {
   while (functionStatus() == 1) {
-    sensorDist = ping();
+    sensorDist = debouncePing();
 
     //as long as the robot has space, move at max speed
     if (sensorDist > SLOW_DIST) {
@@ -195,7 +194,7 @@ void f2_loop() {
    IT'S A ROOMBA...
 */
 void f3_loop() {
-  spiralCount = 5;
+  int spiralCount = 5;
   while (functionStatus() == 3) {
     //every 5 moves, do a spiral
     if (spiralCount >= 5) {
@@ -270,20 +269,33 @@ int functionStatus() {
 */
 int sweep() {
   myservo.write(180);
-  delay(500);
-  leftDist = ping();
-
+  delay(300);
+  leftDist = debouncePing();
+  delay(300);
+    
   myservo.write(0);
-  delay(500);
-  rightDist = ping();
+  delay(300);
+  rightDist = debouncePing();
+  delay(300);
 
   myservo.write(90);
+  delay(300);
   if (leftDist > rightDist)
     return LEFT;
   else
     return RIGHT;
 }
 
+/**
+ * Reduces inconsistent rangefinder values
+ */
+float debouncePing() {
+  float ping1 = ping(); float ping2 = ping(); float ping3 = ping();
+  if (ping1 - ping2 < 5 && ping2 - ping3 < 5)
+    return (ping1 + ping2 + ping3) / 3; 
+  else
+    return debouncePing();
+}
 
 /**
    Reads a value from the rangefinder.
@@ -311,7 +323,7 @@ float ping() {
 
   //Calculate the distance
   distance = pulse / (2 * conversion);
-
+  Serial.println(distance);
   return distance;
 }
 // --------------end rangefind helpers-----------------
@@ -366,10 +378,12 @@ void decelerate() {
   int m_speed = MAX_SPEED;
   int p = STOP_DIST + 1;
   while (p > STOP_DIST) {
-    p = ping();
-    int c = MAX_SPEED * (SLOW_DIST - p) / SLOW_DIST - 50;
+    p = debouncePing();
+    int c = MAX_SPEED * (SLOW_DIST - p) / SLOW_DIST;
 
-    m_speed = MAX_SPEED - c;
+    m_speed = MAX_SPEED -3 c;
+
+    m_speed = m_speed < MIN_SPEED ? MIN_SPEED : m_speed;
 
     writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, m_speed);
     writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, m_speed);
@@ -418,7 +432,7 @@ bool onTape(int reading) {
 */
 void writeMotorSpeed(int motor, int motor_speed_pin, int vel) {
   digitalWrite(motor, vel < 0 ? BACKWARDS : FORWARDS);
-  analogWrite(motor_speed_pin, vel);
+  analogWrite(motor_speed_pin, abs(vel));
 }
 
 /*
