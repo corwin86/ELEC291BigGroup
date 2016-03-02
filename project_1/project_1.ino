@@ -14,31 +14,34 @@
 //control defines
 #define TURN_CONST      9.8   //experimentally derived, consistent up to ~180 degrees
 #define MAX_SPEED       255
-#define MIN_SPEED       60    //experimentally derived, min speed so that motor won't stall
+#define MIN_SPEED       80    //experimentally derived, min speed so that motor won't stall
 #define SWIVEL_SPEED    100
+#define SPIRAL_SPEED    200
 #define LEFT  1
 #define RIGHT 0
 
 //Hall effect pins
 #define HALL_EFFECT_LEFT 3
 #define HALL_EFFECT_RIGHT 2
+//Hall effect defines
 #define HALL_HIGH 600
 
-//f1 defines
+//f1 pins
 #define SERVO 10
 #define TRIGGER 11
 #define ECHO 12
 #define TEMPERATURE 3
-
+//f1 defines
 #define SLOW_DIST 60
 #define STOP_DIST 5
 
-//f2 defines
+//f2 pins
 #define TAPE_LEFT 0
 #define TAPE_RIGHT 1
 
-//f3 defines
+//f3 pins
 #define BUMPER 13
+//f3 defines
 #define MIN_ANGLE 60
 #define MAX_ANGLE 120
 
@@ -85,7 +88,7 @@ void setup() {
   pinMode(ECHO, INPUT);
   pinMode(TEMPERATURE, INPUT);
 
-  //crash switch pinmode
+  //bumper switch pinmode
   pinMode(BUMPER, INPUT_PULLUP);
 
   //set up motor pins and hall effect pins
@@ -218,14 +221,13 @@ void f3_loop() {
       }
     }
 
+    //backs up briefly after a collision
+    goForward(-100);
+    delay(50);
+    stop();
+
     //check which direction has the most space, then turn at a random
     //angle between 60 and 120 and move in that direction
-    digitalWrite(LEFT_MOTOR, BACKWARDS);
-    digitalWrite(RIGHT_MOTOR, BACKWARDS);
-    digitalWrite(LEFT_SPEED_PIN, 100);
-    digitalWrite(RIGHT_SPEED_PIN, 100);
-    delay(500);
-    
     if (sweep() == LEFT) {
       turn(random(MIN_ANGLE, MAX_ANGLE), LEFT);
     }
@@ -321,7 +323,7 @@ float ping() {
 */
 void spiral() {
   stop();
-  int highSpeed = 220;
+  int highSpeed = SPIRAL_SPEED;
   int lowSpeed = MIN_SPEED;
 
   //set the outside motor speed
@@ -332,7 +334,7 @@ void spiral() {
   while (true) {
     delay(10);
     distCount += 10;
-    if (distCount == 500) {
+    if (distCount >= 500) {
       lowSpeed += 1;
       writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, lowSpeed);
       distCount = 0;
