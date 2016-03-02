@@ -195,14 +195,14 @@ void f2_loop() {
    IT'S A ROOMBA...
 */
 void f3_loop() {
+  spiralCount = 5;
   while (functionStatus() == 3) {
-
     //every 5 moves, do a spiral
     if (spiralCount >= 5) {
       //move to (hopefully) the middle of the room by a function of 
       //the distance to the other side
       goForward(MAX_SPEED);
-      delay(ping() * 100);
+      delay(ping() * 50);
       spiral();
       spiralCount = 0;
     }
@@ -235,7 +235,7 @@ void f3_loop() {
       turn(random(MIN_ANGLE, MAX_ANGLE), RIGHT);
     }
     spiralCount++;
-    goForward(MAX_SPEED);
+//    goForward(MAX_SPEED);
   }
 }
 
