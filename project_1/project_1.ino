@@ -26,7 +26,7 @@
 
 //Hall effect defines
 #define HALL_DEBOUNCE 20
-#define HALL_GAIN 2
+#define HALL_GAIN 1/5
 
 //f1 pins
 #define SERVO 10
@@ -134,7 +134,7 @@ void f1_loop() {
     sensorDist = debouncePing();
 
     //as long as the robot has space, move at max speed
-    if (1){//sensorDist > SLOW_DIST) {
+    if (sensorDist > SLOW_DIST) {
       hallStraightDrive();
     }
     //if it doesn't have space, slow down, look both ways, and turn
@@ -433,62 +433,45 @@ void turn(int degrees, int direction) {
 // -----------------end motor helpers-------------------
 
 // ----------------Hall Effect helpers------------------
+long left_t = 0, right_t = 0, hall_left = 0, hall_right = 0;
 void hallStraightDrive() {
   int left  = digitalRead(HALL_EFFECT_LEFT);
   int right = digitalRead(HALL_EFFECT_RIGHT);
 
-  //first wheel hits
-  //  slow that wheel
-  //second wheel hits
-  //  clear hit tracking
-
-  if (left == LOW && millis() - zero_millis > HALL_DEBOUNCE) {
-    if (hit_time > 0) {
-      if(first_hit == 0) {
-        first_hit = hit_time;
-      }
-      hit_time = 0;
-      zero_millis = millis();
-    } else if (hit_time == 0) {
-      hit_time--;
+  if(left == HIGH) {
+    if(left_t == 0) {
+      left_t = millis();
+    }
+  } else {
+    if(left_t != 0) {
+      hall_left = millis() - left_t;
+      left_t = 0;
     }
   }
-  if (right == LOW && millis() - zero_millis > HALL_DEBOUNCE) {
-    if (hit_time < 0) {
-      if(first_hit == 0) {
-        first_hit = hit_time;
-      }
-      hit_time = 0;
-      zero_millis = millis();
-    } else if (hit_time == 0) {
-      hit_time++;
+  if(right == HIGH) {
+    if(right_t == 0) {
+      right_t = millis();
     }
-  }
-
-  if (hit_time > 0) {
-    hit_time++;
-  } else if (hit_time < 0) {
-    hit_time--;
-  }
-
-  int rightspeed = MAX_SPEED;
-  int leftspeed  = MAX_SPEED;
-
-  if (first_hit != 0 && hit_time != 0) {
-    int d = hit_time - first_hit;
-    if (d > 0) { //right was ahead of last time
-      rightspeed -= d * d * HALL_GAIN;
-    } else {     //left was ahead of last time
-      leftspeed  -= d * d * HALL_GAIN; 
+  } else {
+    if(right_t != 0) {
+      hall_right = millis() - right_t;
+      right_t = 0;
     }
   }
   
-  Serial.print(hit_time);Serial.print("\t");Serial.print(first_hit);Serial.print("\t");Serial.print(hit_time - first_hit);Serial.print("\t");
-  Serial.print(leftspeed);Serial.print("\t");Serial.println(rightspeed);
-  Serial.println();
-
+  int c = 0;
+  if(hall_left != 0 && hall_right != 0) {
+    c = hall_left - hall_right;
+  }
+  
+  int leftspeed = MAX_SPEED - c * HALL_GAIN;
+  int rightspeed = MAX_SPEED + c * HALL_GAIN;
+  
   leftspeed  = clamp(leftspeed,  MAX_SPEED / 2, MAX_SPEED);
   rightspeed = clamp(rightspeed, MAX_SPEED / 2, MAX_SPEED);
+  
+  Serial.print(hall_left);Serial.print("\t");Serial.print(hall_right);Serial.print("\t");
+  Serial.print(leftspeed);Serial.print("\t");Serial.println(rightspeed);
 
   writeMotorSpeed(LEFT_MOTOR,  LEFT_SPEED_PIN,  leftspeed);
   writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, rightspeed);
