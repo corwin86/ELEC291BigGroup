@@ -2,8 +2,6 @@
 #include <LiquidCrystal.h>;
 
 //control pins
-#define FORWARDS        LOW   //motor direction forward
-#define BACKWARDS       HIGH  //motor direction backward
 #define LEFT_MOTOR      4     //left motor pin
 #define RIGHT_MOTOR     7     //right motor pin
 #define LEFT_SPEED_PIN  5     //left motor speed setting pin
@@ -12,17 +10,20 @@
 #define SWITCH2         8     //(s1^!s2)=>f1, (!s1^s2)=>f2, (s1^s2)=>f3, (!s2^!s2)=>off
 
 //control defines
+#define FORWARDS        LOW   //motor direction forward
+#define BACKWARDS       HIGH  //motor direction backward
 #define TURN_CONST      10.8   //experimentally derived, consistent up to ~180 degrees
 #define MAX_SPEED       255
 #define MIN_SPEED       80    //experimentally derived, min speed so that motor won't stall
-#define SWIVEL_SPEED    100
-#define SPIRAL_SPEED    200
+#define SWIVEL_SPEED    100   //speed for the robot to turn at
+#define SPIRAL_SPEED    200   //speed for the outside motor while spiralling
 #define LEFT  1
 #define RIGHT 0
 
 //Hall effect pins
 #define HALL_EFFECT_LEFT 3
 #define HALL_EFFECT_RIGHT 2
+
 //Hall effect defines
 #define HALL_HIGH 600
 
@@ -31,6 +32,7 @@
 #define TRIGGER 11
 #define ECHO 12
 #define TEMPERATURE 3
+
 //f1 defines
 #define SLOW_DIST 40
 #define STOP_DIST 13
@@ -41,9 +43,11 @@
 
 //f3 pins
 #define BUMPER 13
+
 //f3 defines
-#define MIN_ANGLE 60
-#define MAX_ANGLE 120
+#define MIN_ANGLE   60
+#define MAX_ANGLE   120
+#define HALF_CONST  40    //time constant to move half of the distance from the wall
 
 // ==== VARIABLES ====
 
@@ -116,10 +120,10 @@ void loop() {
 }
 
 /**
-   Loop for collision function (f1)
+   Loop for collision avoiding function (f1)
    Robot moves at max speed until it gets close to a wall/surface
-   It then sweeps the area around it (180 degrees), checks if there is more room
-   to the left or to the right, and then moves at max speed in that direction
+   It then sweeps the area around it (180 degrees) with the rangefinder, checks if there
+   is more room to the left or to the right, and then moves at max speed in that direction
 */
 void f1_loop() {
   while (functionStatus() == 1) {
@@ -190,18 +194,20 @@ void f2_loop() {
 }
 
 /**
-   Loop for our third function
-   IT'S A ROOMBA...
+   Loop for our third function - area covering
+   Moves halfway to the wall, then spirals until it bumps into something.
+   After bumping, it moves in a random direction (60 to 120 degrees away from wall)
+   until bumping into something again 5 times, then goes back to spiral.  Repeats.
 */
 void f3_loop() {
-  int spiralCount = 5;
+  int spiralCount = 0;
+  spiral();
   while (functionStatus() == 3) {
     //every 5 moves, do a spiral
     if (spiralCount >= 5) {
-      //move to (hopefully) the middle of the room by a function of 
-      //the distance to the other side
-//      goForward(MAX_SPEED);
-//      delay(debouncePing() * 50);
+      //moves halfway across the room before spiraling again
+      goForward(MAX_SPEED);
+      delay(debouncePing() * HALF_CONST);
       spiral();
       spiralCount = 0;
     }
@@ -215,7 +221,7 @@ void f3_loop() {
       delay(10);
     }
     goForward(MIN_SPEED);
-    
+
     //if it hits something, stop
     while (true) {
       if (digitalRead(BUMPER) == LOW) {
@@ -241,7 +247,7 @@ void f3_loop() {
       turn(random(MIN_ANGLE, MAX_ANGLE), RIGHT);
     }
     spiralCount++;
-//    goForward(MAX_SPEED);
+    //    goForward(MAX_SPEED);
   }
 }
 
@@ -279,7 +285,7 @@ int sweep() {
   delay(300);
   leftDist = debouncePing();
   delay(300);
-    
+
   myservo.write(0);
   delay(300);
   rightDist = debouncePing();
@@ -294,18 +300,18 @@ int sweep() {
 }
 
 /**
- * Reduces inconsistent rangefinder values
- */
+   Reduces inconsistent rangefinder values
+*/
 float debouncePing() {
   float ping1 = ping(); float ping2 = ping(); float ping3 = ping();
   if (ping1 - ping2 < 5 && ping2 - ping3 < 5)
-    return (ping1 + ping2 + ping3) / 3; 
+    return (ping1 + ping2 + ping3) / 3;
   else
     return debouncePing();
 }
 
 /**
-   Reads a value from the rangefinder.
+   Reads a value from the rangefinder - helper for debouncePing()
 
    returns: the distance away from the rangefinder, in cm
 */
@@ -370,7 +376,7 @@ void spiral() {
 }
 
 /**
-go forward at a given speed
+  go forward at a given speed
   param: vel (0-255) to set velocity
 */
 void goForward(int vel) {
