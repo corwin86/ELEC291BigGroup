@@ -12,7 +12,7 @@
 //control defines
 #define FORWARDS        LOW   //motor direction forward
 #define BACKWARDS       HIGH  //motor direction backward
-#define TURN_CONST      10.8   //experimentally derived, consistent up to ~180 degrees
+#define TURN_CONST      11.8   //experimentally derived, consistent up to ~180 degrees
 #define MAX_SPEED       255
 #define MIN_SPEED       80    //experimentally derived, min speed so that motor won't stall
 #define SWIVEL_SPEED    100   //speed for the robot to turn at
@@ -25,18 +25,19 @@
 #define HALL_EFFECT_RIGHT 2
 
 //Hall effect defines
-#define HALL_DEBOUNCE 20
-#define HALL_GAIN 1/5
+#define HALL_GAIN 25
 
 //f1 pins
 #define SERVO 10
 #define TRIGGER 11
 #define ECHO 12
 #define TEMPERATURE 3
+#define L_TRIM 8
+#define R_TRIM 0
 
 //f1 defines
 #define SLOW_DIST 40
-#define STOP_DIST 13
+#define STOP_DIST 7
 
 //f2 pins
 #define TAPE_LEFT 0
@@ -61,9 +62,10 @@ Servo myservo;  // create servo object to control a servo
 float temp, pulse, distance, SpeedOfSound,
       rightDist, leftDist, sensorDist;
 
-int  first_hit   = 0,
-     hit_time    = 0,
-     zero_millis = -HALL_DEBOUNCE;
+long left_t = 0,
+     right_t = 0,
+     hall_left = 0,
+     hall_right = 0;
 /***end collision variables***/
 
 /***tapefollow (f2) variables***/
@@ -107,7 +109,6 @@ void setup() {
   //set up hall effect pin
   pinMode(HALL_EFFECT_LEFT, INPUT);
   pinMode(HALL_EFFECT_RIGHT, INPUT);
-  delay(1500);
 }
 
 //determines which function loop to run
@@ -134,12 +135,13 @@ void f1_loop() {
     sensorDist = debouncePing();
 
     //as long as the robot has space, move at max speed
-    if (sensorDist > SLOW_DIST) {
-      hallStraightDrive();
+    if (sensorDist > SLOW_DIST || sensorDist < STOP_DIST) {
+      trimDrive();//hallStraightDrive();
     }
     //if it doesn't have space, slow down, look both ways, and turn
     //90 degrees in the direction with the most space and continue
     else {
+      myservo.write(90);
       decelerate();
       delay(250);
       if (sweep() == LEFT) {
@@ -331,6 +333,8 @@ float ping() {
   conversion = conversion * 1000000 / 100;
 
   //Send a pulse to the trigger
+  digitalWrite(TRIGGER, LOW);
+  delayMicroseconds(10);
   digitalWrite(TRIGGER, HIGH);
   delayMicroseconds(10);
   digitalWrite(TRIGGER, LOW);
@@ -399,7 +403,7 @@ void decelerate() {
 
     m_speed = clamp(MAX_SPEED - c, MIN_SPEED, MAX_SPEED);
 
-    writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, m_speed);
+    writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, m_speed - L_TRIM);
     writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, m_speed);
   }
   stop();
@@ -433,7 +437,11 @@ void turn(int degrees, int direction) {
 // -----------------end motor helpers-------------------
 
 // ----------------Hall Effect helpers------------------
-long left_t = 0, right_t = 0, hall_left = 0, hall_right = 0;
+void trimDrive() {
+  writeMotorSpeed(LEFT_MOTOR,  LEFT_SPEED_PIN,  MAX_SPEED - L_TRIM);
+  writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, MAX_SPEED - R_TRIM);
+}
+
 void hallStraightDrive() {
   int left  = digitalRead(HALL_EFFECT_LEFT);
   int right = digitalRead(HALL_EFFECT_RIGHT);
@@ -461,17 +469,17 @@ void hallStraightDrive() {
   
   int c = 0;
   if(hall_left != 0 && hall_right != 0) {
-    c = hall_left - hall_right;
+    c = (hall_left - hall_right) * HALL_GAIN;
   }
   
-  int leftspeed = MAX_SPEED - c * HALL_GAIN;
-  int rightspeed = MAX_SPEED + c * HALL_GAIN;
+  int leftspeed  = MAX_SPEED + c;
+  int rightspeed = MAX_SPEED - c;
   
-  leftspeed  = clamp(leftspeed,  MAX_SPEED / 2, MAX_SPEED);
-  rightspeed = clamp(rightspeed, MAX_SPEED / 2, MAX_SPEED);
+  leftspeed  = clamp(leftspeed,  MAX_SPEED - HALL_GAIN, MAX_SPEED);
+  rightspeed = clamp(rightspeed, MAX_SPEED - HALL_GAIN, MAX_SPEED);
   
   Serial.print(hall_left);Serial.print("\t");Serial.print(hall_right);Serial.print("\t");
-  Serial.print(leftspeed);Serial.print("\t");Serial.println(rightspeed);
+  Serial.print(leftspeed);Serial.print("\t");Serial.println(rightspeed);Serial.print("\t");Serial.println(c);
 
   writeMotorSpeed(LEFT_MOTOR,  LEFT_SPEED_PIN,  leftspeed);
   writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, rightspeed);
