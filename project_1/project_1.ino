@@ -25,7 +25,8 @@
 #define HALL_EFFECT_RIGHT 2
 
 //Hall effect defines
-#define HALL_HIGH 600
+#define HALL_DEBOUNCE 20
+#define HALL_GAIN 2
 
 //f1 pins
 #define SERVO 10
@@ -59,15 +60,18 @@ int function = 0;
 Servo myservo;  // create servo object to control a servo
 float temp, pulse, distance, SpeedOfSound,
       rightDist, leftDist, sensorDist;
+
+int  first_hit   = 0,
+     hit_time    = 0,
+     zero_millis = -HALL_DEBOUNCE;
 /***end collision variables***/
 
 /***tapefollow (f2) variables***/
-int kp = 80,
-    kd = 0,
-    vel = 175;
+int kp = 65,
+    vel = 255;
 int last_error = 0, recent_error = 0;
 int t_cur = 0, t_recent = 0;
-int TAPE_THRESH = 600;
+int TAPE_THRESH = 650;
 /***end tapefollow variables***/
 
 /***roomba (f3) variables***/
@@ -130,8 +134,8 @@ void f1_loop() {
     sensorDist = debouncePing();
 
     //as long as the robot has space, move at max speed
-    if (sensorDist > SLOW_DIST) {
-      goForward(MAX_SPEED);
+    if (1){//sensorDist > SLOW_DIST) {
+      hallStraightDrive();
     }
     //if it doesn't have space, slow down, look both ways, and turn
     //90 degrees in the direction with the most space and continue
@@ -171,19 +175,19 @@ void f2_loop() {
     }
 
     // find time spent in current and previous error states (for D gain)
-    if (error != last_error) {
-      recent_error = last_error;
-      t_recent = t_cur; //save time in recent error state
-      t_cur = 1;        //begin counting new error state
-    }
+    //    if (error != last_error) {
+    //      recent_error = last_error;
+    //      t_recent = t_cur; //save time in recent error state
+    //      t_cur = 1;        //begin counting new error state
+    //    }
 
     // calculate gains & correction
     int p_gain = kp * error;
-    int d_gain = (int)( (float)kd * (float)(error - recent_error) / (float)(t_cur++ + t_recent) );
-    int correction = p_gain + d_gain;
+    //    int d_gain = (int)( (float)kd * (float)(error - recent_error) / (float)(t_cur++ + t_recent) );
+    int correction = p_gain;// + d_gain;
 
-    int leftspeed  = clamp(vel + correction, 0, 255);
-    int rightspeed = clamp(vel - correction, 0, 255);
+    int leftspeed  = clamp(vel + correction, -255, 255);
+    int rightspeed = clamp(vel - correction, -255, 255);
 
     writeMotorSpeed(LEFT_MOTOR , LEFT_SPEED_PIN , leftspeed);
     writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, rightspeed);
@@ -336,7 +340,6 @@ float ping() {
 
   //Calculate the distance
   distance = pulse / (2 * conversion);
-  Serial.println(distance);
   return distance;
 }
 // --------------end rangefind helpers-----------------
@@ -428,6 +431,69 @@ void turn(int degrees, int direction) {
 }
 
 // -----------------end motor helpers-------------------
+
+// ----------------Hall Effect helpers------------------
+void hallStraightDrive() {
+  int left  = digitalRead(HALL_EFFECT_LEFT);
+  int right = digitalRead(HALL_EFFECT_RIGHT);
+
+  //first wheel hits
+  //  slow that wheel
+  //second wheel hits
+  //  clear hit tracking
+
+  if (left == LOW && millis() - zero_millis > HALL_DEBOUNCE) {
+    if (hit_time > 0) {
+      if(first_hit == 0) {
+        first_hit = hit_time;
+      }
+      hit_time = 0;
+      zero_millis = millis();
+    } else if (hit_time == 0) {
+      hit_time--;
+    }
+  }
+  if (right == LOW && millis() - zero_millis > HALL_DEBOUNCE) {
+    if (hit_time < 0) {
+      if(first_hit == 0) {
+        first_hit = hit_time;
+      }
+      hit_time = 0;
+      zero_millis = millis();
+    } else if (hit_time == 0) {
+      hit_time++;
+    }
+  }
+
+  if (hit_time > 0) {
+    hit_time++;
+  } else if (hit_time < 0) {
+    hit_time--;
+  }
+
+  int rightspeed = MAX_SPEED;
+  int leftspeed  = MAX_SPEED;
+
+  if (first_hit != 0 && hit_time != 0) {
+    int d = hit_time - first_hit;
+    if (d > 0) { //right was ahead of last time
+      rightspeed -= d * d * HALL_GAIN;
+    } else {     //left was ahead of last time
+      leftspeed  -= d * d * HALL_GAIN; 
+    }
+  }
+  
+  Serial.print(hit_time);Serial.print("\t");Serial.print(first_hit);Serial.print("\t");Serial.print(hit_time - first_hit);Serial.print("\t");
+  Serial.print(leftspeed);Serial.print("\t");Serial.println(rightspeed);
+  Serial.println();
+
+  leftspeed  = clamp(leftspeed,  MAX_SPEED / 2, MAX_SPEED);
+  rightspeed = clamp(rightspeed, MAX_SPEED / 2, MAX_SPEED);
+
+  writeMotorSpeed(LEFT_MOTOR,  LEFT_SPEED_PIN,  leftspeed);
+  writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, rightspeed);
+}
+// -----------------------------------------------------
 
 // --------------Tape following helpers-----------------
 bool onTape(int reading) {
