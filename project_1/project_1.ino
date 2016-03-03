@@ -12,7 +12,7 @@
 #define SWITCH2         8     //(s1^!s2)=>f1, (!s1^s2)=>f2, (s1^s2)=>f3, (!s2^!s2)=>off
 
 //control defines
-#define TURN_CONST      11   //experimentally derived, consistent up to ~180 degrees
+#define TURN_CONST      10.8   //experimentally derived, consistent up to ~180 degrees
 #define MAX_SPEED       255
 #define MIN_SPEED       80    //experimentally derived, min speed so that motor won't stall
 #define SWIVEL_SPEED    100
@@ -33,7 +33,7 @@
 #define TEMPERATURE 3
 //f1 defines
 #define SLOW_DIST 40
-#define STOP_DIST 10
+#define STOP_DIST 13
 
 //f2 pins
 #define TAPE_LEFT 0
@@ -200,8 +200,8 @@ void f3_loop() {
     if (spiralCount >= 5) {
       //move to (hopefully) the middle of the room by a function of 
       //the distance to the other side
-      goForward(MAX_SPEED);
-      delay(ping() * 50);
+//      goForward(MAX_SPEED);
+//      delay(debouncePing() * 50);
       spiral();
       spiralCount = 0;
     }
@@ -209,6 +209,13 @@ void f3_loop() {
     //then, bounce off walls for 5 moves
     //go at max speed until it hits something?
     goForward(MAX_SPEED);
+
+    //slow down before collision
+    while (debouncePing() < SLOW_DIST - 10) {
+      delay(10);
+    }
+    goForward(MIN_SPEED);
+    
     //if it hits something, stop
     while (true) {
       if (digitalRead(BUMPER) == LOW) {
@@ -222,7 +229,7 @@ void f3_loop() {
 
     //backs up briefly after a collision
     goForward(-100);
-    delay(50);
+    delay(100);
     stop();
 
     //check which direction has the most space, then turn at a random
@@ -381,9 +388,7 @@ void decelerate() {
     p = debouncePing();
     int c = MAX_SPEED * (SLOW_DIST - p) / SLOW_DIST;
 
-    m_speed = MAX_SPEED -3 c;
-
-    m_speed = m_speed < MIN_SPEED ? MIN_SPEED : m_speed;
+    m_speed = clamp(MAX_SPEED - c, MIN_SPEED, MAX_SPEED);
 
     writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, m_speed);
     writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, m_speed);
