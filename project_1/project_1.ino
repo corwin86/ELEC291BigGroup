@@ -12,7 +12,7 @@
 //control defines
 #define FORWARDS        LOW   //motor direction forward
 #define BACKWARDS       HIGH  //motor direction backward
-#define TURN_CONST      10.8   //experimentally derived, consistent up to ~180 degrees
+#define TURN_CONST      11.8   //experimentally derived, consistent up to ~180 degrees
 #define MAX_SPEED       255
 #define MIN_SPEED       80    //experimentally derived, min speed so that motor won't stall
 #define SWIVEL_SPEED    100   //speed for the robot to turn at
@@ -25,17 +25,19 @@
 #define HALL_EFFECT_RIGHT 2
 
 //Hall effect defines
-#define HALL_HIGH 600
+#define HALL_GAIN 25
 
 //f1 pins
 #define SERVO 10
 #define TRIGGER 11
 #define ECHO 12
 #define TEMPERATURE 3
+#define L_TRIM 8
+#define R_TRIM 0
 
 //f1 defines
 #define SLOW_DIST 40
-#define STOP_DIST 13
+#define STOP_DIST 7
 
 //f2 pins
 #define TAPE_LEFT 0
@@ -59,15 +61,19 @@ int function = 0;
 Servo myservo;  // create servo object to control a servo
 float temp, pulse, distance, SpeedOfSound,
       rightDist, leftDist, sensorDist;
+
+long left_t = 0,
+     right_t = 0,
+     hall_left = 0,
+     hall_right = 0;
 /***end collision variables***/
 
 /***tapefollow (f2) variables***/
-int kp = 80,
-    kd = 0,
-    vel = 175;
+int kp = 65,
+    vel = 255;
 int last_error = 0, recent_error = 0;
 int t_cur = 0, t_recent = 0;
-int TAPE_THRESH = 600;
+int TAPE_THRESH = 650;
 /***end tapefollow variables***/
 
 /***roomba (f3) variables***/
@@ -103,7 +109,6 @@ void setup() {
   //set up hall effect pin
   pinMode(HALL_EFFECT_LEFT, INPUT);
   pinMode(HALL_EFFECT_RIGHT, INPUT);
-  delay(1500);
 }
 
 //determines which function loop to run
@@ -130,12 +135,13 @@ void f1_loop() {
     sensorDist = debouncePing();
 
     //as long as the robot has space, move at max speed
-    if (sensorDist > SLOW_DIST) {
-      goForward(MAX_SPEED);
+    if (sensorDist > SLOW_DIST || sensorDist < STOP_DIST) {
+      trimDrive();//hallStraightDrive();
     }
     //if it doesn't have space, slow down, look both ways, and turn
     //90 degrees in the direction with the most space and continue
     else {
+      myservo.write(90);
       decelerate();
       delay(250);
       if (sweep() == LEFT) {
@@ -171,19 +177,19 @@ void f2_loop() {
     }
 
     // find time spent in current and previous error states (for D gain)
-    if (error != last_error) {
-      recent_error = last_error;
-      t_recent = t_cur; //save time in recent error state
-      t_cur = 1;        //begin counting new error state
-    }
+    //    if (error != last_error) {
+    //      recent_error = last_error;
+    //      t_recent = t_cur; //save time in recent error state
+    //      t_cur = 1;        //begin counting new error state
+    //    }
 
     // calculate gains & correction
     int p_gain = kp * error;
-    int d_gain = (int)( (float)kd * (float)(error - recent_error) / (float)(t_cur++ + t_recent) );
-    int correction = p_gain + d_gain;
+    //    int d_gain = (int)( (float)kd * (float)(error - recent_error) / (float)(t_cur++ + t_recent) );
+    int correction = p_gain;// + d_gain;
 
-    int leftspeed  = clamp(vel + correction, 0, 255);
-    int rightspeed = clamp(vel - correction, 0, 255);
+    int leftspeed  = clamp(vel + correction, -255, 255);
+    int rightspeed = clamp(vel - correction, -255, 255);
 
     writeMotorSpeed(LEFT_MOTOR , LEFT_SPEED_PIN , leftspeed);
     writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, rightspeed);
@@ -327,6 +333,8 @@ float ping() {
   conversion = conversion * 1000000 / 100;
 
   //Send a pulse to the trigger
+  digitalWrite(TRIGGER, LOW);
+  delayMicroseconds(10);
   digitalWrite(TRIGGER, HIGH);
   delayMicroseconds(10);
   digitalWrite(TRIGGER, LOW);
@@ -336,7 +344,6 @@ float ping() {
 
   //Calculate the distance
   distance = pulse / (2 * conversion);
-  Serial.println(distance);
   return distance;
 }
 // --------------end rangefind helpers-----------------
@@ -396,7 +403,7 @@ void decelerate() {
 
     m_speed = clamp(MAX_SPEED - c, MIN_SPEED, MAX_SPEED);
 
-    writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, m_speed);
+    writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, m_speed - L_TRIM);
     writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, m_speed);
   }
   stop();
@@ -428,6 +435,56 @@ void turn(int degrees, int direction) {
 }
 
 // -----------------end motor helpers-------------------
+
+// ----------------Hall Effect helpers------------------
+void trimDrive() {
+  writeMotorSpeed(LEFT_MOTOR,  LEFT_SPEED_PIN,  MAX_SPEED - L_TRIM);
+  writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, MAX_SPEED - R_TRIM);
+}
+
+void hallStraightDrive() {
+  int left  = digitalRead(HALL_EFFECT_LEFT);
+  int right = digitalRead(HALL_EFFECT_RIGHT);
+
+  if(left == HIGH) {
+    if(left_t == 0) {
+      left_t = millis();
+    }
+  } else {
+    if(left_t != 0) {
+      hall_left = millis() - left_t;
+      left_t = 0;
+    }
+  }
+  if(right == HIGH) {
+    if(right_t == 0) {
+      right_t = millis();
+    }
+  } else {
+    if(right_t != 0) {
+      hall_right = millis() - right_t;
+      right_t = 0;
+    }
+  }
+  
+  int c = 0;
+  if(hall_left != 0 && hall_right != 0) {
+    c = (hall_left - hall_right) * HALL_GAIN;
+  }
+  
+  int leftspeed  = MAX_SPEED + c;
+  int rightspeed = MAX_SPEED - c;
+  
+  leftspeed  = clamp(leftspeed,  MAX_SPEED - HALL_GAIN, MAX_SPEED);
+  rightspeed = clamp(rightspeed, MAX_SPEED - HALL_GAIN, MAX_SPEED);
+  
+  Serial.print(hall_left);Serial.print("\t");Serial.print(hall_right);Serial.print("\t");
+  Serial.print(leftspeed);Serial.print("\t");Serial.println(rightspeed);Serial.print("\t");Serial.println(c);
+
+  writeMotorSpeed(LEFT_MOTOR,  LEFT_SPEED_PIN,  leftspeed);
+  writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, rightspeed);
+}
+// -----------------------------------------------------
 
 // --------------Tape following helpers-----------------
 bool onTape(int reading) {
