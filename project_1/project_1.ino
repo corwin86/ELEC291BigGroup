@@ -50,7 +50,7 @@
 //f3 defines
 #define MIN_ANGLE   60
 #define MAX_ANGLE   120
-#define HALF_CONST  15    //time constant to move half of the distance from the wall
+#define HALF_CONST  12     //time constant to move half of the distance from the wall
 
 // ==== VARIABLES ====
 
@@ -210,11 +210,14 @@ void f3_loop() {
   spiral();
   while (functionStatus() == 3) {
     //every 5 moves, do a spiral
+    Serial.println(spiralCount);
     if (spiralCount >= 2) {
       turnOnBump();
+      Serial.println("before");
       //moves halfway across the room before spiraling again
       goForward(MAX_SPEED);
       delay((int) debouncePing() * HALF_CONST);
+      Serial.println("after");
       spiral();
       spiralCount = 0;
     }
