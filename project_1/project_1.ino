@@ -15,8 +15,9 @@
 #define TURN_CONST      11.8   //experimentally derived, consistent up to ~180 degrees
 #define MAX_SPEED       255
 #define MIN_SPEED       80    //experimentally derived, min speed so that motor won't stall
+#define SLOW            130
 #define SWIVEL_SPEED    100   //speed for the robot to turn at
-#define SPIRAL_SPEED    200   //speed for the outside motor while spiralling
+#define SPIRAL_SPEED    230   //speed for the outside motor while spiralling
 #define LEFT  1
 #define RIGHT 0
 
@@ -49,7 +50,7 @@
 //f3 defines
 #define MIN_ANGLE   60
 #define MAX_ANGLE   120
-#define HALF_CONST  40    //time constant to move half of the distance from the wall
+#define HALF_CONST  15    //time constant to move half of the distance from the wall
 
 // ==== VARIABLES ====
 
@@ -77,7 +78,6 @@ int TAPE_THRESH = 650;
 /***end tapefollow variables***/
 
 /***roomba (f3) variables***/
-int distCount = 0;
 /***end roomba variables***/
 
 // == END VARIABLES ==
@@ -210,26 +210,27 @@ void f3_loop() {
   spiral();
   while (functionStatus() == 3) {
     //every 5 moves, do a spiral
-    if (spiralCount >= 5) {
+    if (spiralCount >= 2) {
+      turnOnBump();
       //moves halfway across the room before spiraling again
       goForward(MAX_SPEED);
-      delay(debouncePing() * HALF_CONST);
+      delay((int) debouncePing() * HALF_CONST);
       spiral();
       spiralCount = 0;
     }
+
+    //back up and turn
+    turnOnBump();
 
     //then, bounce off walls for 5 moves
     //go at max speed until it hits something?
     goForward(MAX_SPEED);
 
-    //slow down before collision
-    while (debouncePing() < SLOW_DIST - 10) {
-      delay(10);
-    }
-    goForward(MIN_SPEED);
-
-    //if it hits something, stop
+    //slow down before a collision, then back up and turn when the bumper is hit
     while (true) {
+      if (debouncePing() < 25.0) {
+        goForward(SLOW);
+      }
       if (digitalRead(BUMPER) == LOW) {
         delay(10);
         if (digitalRead(BUMPER) == LOW) {
@@ -237,23 +238,9 @@ void f3_loop() {
           break;
         }
       }
-    }
-
-    //backs up briefly after a collision
-    goForward(-100);
-    delay(100);
-    stop();
-
-    //check which direction has the most space, then turn at a random
-    //angle between 60 and 120 and move in that direction
-    if (sweep() == LEFT) {
-      turn(random(MIN_ANGLE, MAX_ANGLE), LEFT);
-    }
-    else {
-      turn(random(MIN_ANGLE, MAX_ANGLE), RIGHT);
+      delay(10);
     }
     spiralCount++;
-    //    goForward(MAX_SPEED);
   }
 }
 
@@ -362,7 +349,7 @@ void spiral() {
   writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, highSpeed);
 
   //gradually increase speed of inside motor
-  distCount = 500; //check that it isn't used somewhere else
+  int distCount = 500; //check that it isn't used somewhere else
   while (true) {
     delay(10);
     distCount += 10;
@@ -376,9 +363,28 @@ void spiral() {
     if (digitalRead(BUMPER) == LOW) {
       delay(10);
       if (digitalRead(BUMPER) == LOW) {
-        break;
+        stop();
+        return;
       }
     }
+  }
+}
+
+/**
+
+*/
+void turnOnBump() {
+  goForward(-200);
+  delay(200);
+  stop();
+
+  //check which direction has the most space, then turn at a random
+  //angle between 60 and 120 and move in that direction
+  if (sweep() == LEFT) {
+    turn(random(MIN_ANGLE, MAX_ANGLE), LEFT);
+  }
+  else {
+    turn(random(MIN_ANGLE, MAX_ANGLE), RIGHT);
   }
 }
 
@@ -446,40 +452,40 @@ void hallStraightDrive() {
   int left  = digitalRead(HALL_EFFECT_LEFT);
   int right = digitalRead(HALL_EFFECT_RIGHT);
 
-  if(left == HIGH) {
-    if(left_t == 0) {
+  if (left == HIGH) {
+    if (left_t == 0) {
       left_t = millis();
     }
   } else {
-    if(left_t != 0) {
+    if (left_t != 0) {
       hall_left = millis() - left_t;
       left_t = 0;
     }
   }
-  if(right == HIGH) {
-    if(right_t == 0) {
+  if (right == HIGH) {
+    if (right_t == 0) {
       right_t = millis();
     }
   } else {
-    if(right_t != 0) {
+    if (right_t != 0) {
       hall_right = millis() - right_t;
       right_t = 0;
     }
   }
-  
+
   int c = 0;
-  if(hall_left != 0 && hall_right != 0) {
+  if (hall_left != 0 && hall_right != 0) {
     c = (hall_left - hall_right) * HALL_GAIN;
   }
-  
+
   int leftspeed  = MAX_SPEED + c;
   int rightspeed = MAX_SPEED - c;
-  
+
   leftspeed  = clamp(leftspeed,  MAX_SPEED - HALL_GAIN, MAX_SPEED);
   rightspeed = clamp(rightspeed, MAX_SPEED - HALL_GAIN, MAX_SPEED);
-  
-  Serial.print(hall_left);Serial.print("\t");Serial.print(hall_right);Serial.print("\t");
-  Serial.print(leftspeed);Serial.print("\t");Serial.println(rightspeed);Serial.print("\t");Serial.println(c);
+
+  Serial.print(hall_left); Serial.print("\t"); Serial.print(hall_right); Serial.print("\t");
+  Serial.print(leftspeed); Serial.print("\t"); Serial.println(rightspeed); Serial.print("\t"); Serial.println(c);
 
   writeMotorSpeed(LEFT_MOTOR,  LEFT_SPEED_PIN,  leftspeed);
   writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, rightspeed);

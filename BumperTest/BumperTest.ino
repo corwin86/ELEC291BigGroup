@@ -7,6 +7,7 @@
 #define BUMPER 13
 
 void setup() {
+  Serial.begin(9600);
   pinMode(RIGHT_SPEED_PIN, OUTPUT);
   pinMode(LEFT_SPEED_PIN, OUTPUT);
   pinMode(LEFT_MOTOR, OUTPUT);
@@ -15,22 +16,31 @@ void setup() {
 }
 
 void loop()   {
+  Serial.println("not bumped");
+  
   if (digitalRead(BUMPER) == LOW) {
-    delay(50);
-    if (digitalRead(BUMPER) == LOW) {
-    digitalWrite(LEFT_SPEED_PIN, 0);
-      digitalWrite(RIGHT_SPEED_PIN, 0);
-      delay(500);
-      digitalWrite(LEFT_MOTOR, BACKWARDS);
-      digitalWrite(RIGHT_MOTOR, BACKWARDS);
-      digitalWrite(LEFT_SPEED_PIN, 150);
-      digitalWrite(RIGHT_SPEED_PIN, 150);
-      delay(500);
+    Serial.println("debouncing...");
+    delay(10);
+    if (digitalRead(BUMPER) == LOW ) {
+    Serial.println("bump");
     }
-  } else {
-    digitalWrite(LEFT_MOTOR, FORWARDS);
-    digitalWrite(RIGHT_MOTOR, FORWARDS);
-    digitalWrite(LEFT_SPEED_PIN, 200);
-    digitalWrite(RIGHT_SPEED_PIN, 200);
   }
+  delay(1000);
+
+  //    if (digitalRead(BUMPER) == LOW) {
+  //    digitalWrite(LEFT_SPEED_PIN, 0);
+  //      digitalWrite(RIGHT_SPEED_PIN, 0);
+  //      delay(500);
+  //      digitalWrite(LEFT_MOTOR, BACKWARDS);
+  //      digitalWrite(RIGHT_MOTOR, BACKWARDS);
+  //      digitalWrite(LEFT_SPEED_PIN, 150);
+  //      digitalWrite(RIGHT_SPEED_PIN, 150);
+  //      delay(500);
+  //    }
+  //  } else {
+  //    digitalWrite(LEFT_MOTOR, FORWARDS);
+  //    digitalWrite(RIGHT_MOTOR, FORWARDS);
+  //    digitalWrite(LEFT_SPEED_PIN, 200);
+  //    digitalWrite(RIGHT_SPEED_PIN, 200);
+  //  }
 }
