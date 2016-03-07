@@ -1,5 +1,6 @@
+
 #include <Servo.h>
-#include <LiquidCrystal.h>;
+//#include <LiquidCrystal.h>;
 
 //control pins
 #define LEFT_MOTOR      4     //left motor pin
@@ -12,7 +13,7 @@
 //control defines
 #define FORWARDS        LOW   //motor direction forward
 #define BACKWARDS       HIGH  //motor direction backward
-#define TURN_CONST      11.8   //experimentally derived, consistent up to ~180 degrees
+#define TURN_CONST      11.0   //experimentally derived, consistent up to ~180 degrees
 #define MAX_SPEED       255
 #define MIN_SPEED       80    //experimentally derived, min speed so that motor won't stall
 #define SLOW            130
@@ -70,8 +71,9 @@ long left_t = 0,
 /***end collision variables***/
 
 /***tapefollow (f2) variables***/
-int kp = 65,
-    vel = 255;
+int kp = 60,
+    kd = 7,
+    vel = 175;
 int last_error = 0, recent_error = 0;
 int t_cur = 0, t_recent = 0;
 int TAPE_THRESH = 650;
@@ -177,19 +179,19 @@ void f2_loop() {
     }
 
     // find time spent in current and previous error states (for D gain)
-    //    if (error != last_error) {
-    //      recent_error = last_error;
-    //      t_recent = t_cur; //save time in recent error state
-    //      t_cur = 1;        //begin counting new error state
-    //    }
+    if (error != last_error) {
+      recent_error = last_error;
+      t_recent = t_cur; //save time in recent error state
+      t_cur = 1;        //begin counting new error state
+    }
 
     // calculate gains & correction
     int p_gain = kp * error;
-    //    int d_gain = (int)( (float)kd * (float)(error - recent_error) / (float)(t_cur++ + t_recent) );
-    int correction = p_gain;// + d_gain;
+    int d_gain = (int)( (float)kd * (float)(error - recent_error) / (float)(t_cur++ + t_recent) );
+    int correction = p_gain+ d_gain;
 
-    int leftspeed  = clamp(vel + correction, -255, 255);
-    int rightspeed = clamp(vel - correction, -255, 255);
+    int leftspeed  = clamp(vel + correction, -100, 255);
+    int rightspeed = clamp(vel - correction, -100, 255);
 
     writeMotorSpeed(LEFT_MOTOR , LEFT_SPEED_PIN , leftspeed);
     writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, rightspeed);
