@@ -342,24 +342,35 @@ float ping() {
 // ------------------Motor helpers---------------------
 /**
   Moves the robot in a left spiral until it runs into something
+  ***to adjust: for tighter spiral, increase spiralDelay increment and decrease initial spiralDelay.  Do the opposite for a looser spiral
 */
 void spiral() {
   stop();
   int highSpeed = SPIRAL_SPEED;
   int lowSpeed = MIN_SPEED;
+  int spiralDelay = 300;        //start out increasing the speed every 400 ms
+  int distCount = 0;            //counter for how long to wait before increasing speed
 
   //set the outside motor speed
   writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, highSpeed);
+  writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, lowSpeed);
 
   //gradually increase speed of inside motor
-  int distCount = 500; //check that it isn't used somewhere else
   while (true) {
     delay(10);
     distCount += 10;
-    if (distCount >= 500) {
+
+    /*
+      every 10 ms, check if we need to increase the speed of the inside wheel
+      this occurs every time the counter reaches a certain delay threshold
+      whenever the speed of the inner wheel increases, we increase the delay threshold
+      as well, so that the inner wheel speed increases with a longer delay every time
+    */
+    if (distCount >= spiralDelay) {
       lowSpeed += 1;
       writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, lowSpeed);
       distCount = 0;
+      spiralDelay += 6;
     }
 
     //debouncing for switch
