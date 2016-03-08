@@ -52,6 +52,7 @@
 #define MIN_ANGLE   60
 #define MAX_ANGLE   120
 #define HALF_CONST  12     //time constant to move half of the distance from the wall
+#define numberHits 5
 
 // ==== VARIABLES ====
 
@@ -213,7 +214,7 @@ void f3_loop() {
   while (functionStatus() == 3) {
     //every 5 moves, do a spiral
     Serial.println(spiralCount);
-    if (spiralCount >= 2) {
+    if (spiralCount >= numberHits) {
       turnOnBump();
       Serial.println("before");
       //moves halfway across the room before spiraling again
@@ -409,8 +410,8 @@ void turnOnBump() {
   param: vel (0-255) to set velocity
 */
 void goForward(int vel) {
-  writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, vel);
-  writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, vel);
+  writeMotorSpeed(LEFT_MOTOR, LEFT_SPEED_PIN, vel - L_TRIM);
+  writeMotorSpeed(RIGHT_MOTOR, RIGHT_SPEED_PIN, vel - R_TRIM);
 }
 
 /**
